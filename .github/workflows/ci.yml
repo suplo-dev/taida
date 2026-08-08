@@ -1,0 +1,131 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  # Lets deploy.yml gate on the same suite instead of duplicating it.
+  workflow_call:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  api:
+    name: Laravel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, pdo_sqlite, gd, fileinfo, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache composer packages
+        uses: actions/cache@v4
+        with:
+          path: be/vendor
+          key: composer-${{ hashFiles('be/composer.lock') }}
+          restore-keys: composer-
+
+      - name: Install dependencies
+        working-directory: be
+        run: composer install --prefer-dist --no-interaction --no-progress
+
+      # phpunit.xml pins the suite to sqlite :memory:, so no database service
+      # is needed — but APP_KEY is still required to boot the app.
+      - name: Prepare environment
+        working-directory: be
+        run: |
+          cp .env.example .env
+          php artisan key:generate
+
+      - name: Check formatting
+        working-directory: be
+        run: vendor/bin/pint --test
+
+      - name: Run tests
+        working-directory: be
+        run: php artisan test
+
+  web:
+    name: Nuxt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # The site is statically generated, so the build reads every page out of
+      # the API and writes it to disk. That makes a running API part of the
+      # build toolchain: without one there is nothing to check, and a broken
+      # endpoint or a record missing a translation would only surface on the
+      # server. sqlite keeps it to one process with no service container.
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.5'
+          extensions: mbstring, pdo_sqlite, gd, fileinfo, intl
+          coverage: none
+          tools: composer:v2
+
+      - name: Start the API
+        working-directory: be
+        run: |
+          composer install --prefer-dist --no-interaction --no-progress
+          cp .env.example .env
+          php artisan key:generate
+          touch database/database.sqlite
+          {
+            echo "DB_CONNECTION=sqlite"
+            echo "DB_DATABASE=$PWD/database/database.sqlite"
+            echo "FRONTEND_URLS=http://127.0.0.1:3000"
+          } >> .env
+          php artisan migrate --force --seed
+          php artisan serve --host=127.0.0.1 --port=8000 &
+          # Fail fast and loudly rather than let the build time out crawling.
+          for _ in $(seq 1 30); do
+            curl -fsS -o /dev/null http://127.0.0.1:8000/api/v1/ping && exit 0
+            sleep 1
+          done
+          echo "::error::API did not come up"; exit 1
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: fe/pnpm-lock.yaml
+
+      - name: Install dependencies
+        working-directory: fe
+        run: pnpm install --frozen-lockfile
+
+      # `prerender.failOnError` is on, so this fails on any page that 404s
+      # during the crawl — which is how the broken language switcher was found.
+      - name: Generate the static site
+        working-directory: fe
+        env:
+          NUXT_PUBLIC_API_BASE: http://127.0.0.1:8000
+          NUXT_PUBLIC_SITE_URL: https://www.taida.vn
+        run: pnpm generate
+
+      - name: Check the output
+        working-directory: fe
+        run: |
+          set -e
+          test -f .output/public/index.html
+          test -f .output/public/en/index.html
+          test -f .output/public/sitemap.xml
+          # Hidden file, and the one most easily lost in an FTP upload; without
+          # it the site ships uncompressed and /admin breaks on reload.
+          test -f .output/public/.htaccess
+          # Pre-compressed variants are what static hosting serves.
+          test -f .output/public/index.html.br
+          pages=$(find .output/public -name index.html | wc -l)
+          echo "Generated $pages pages"
+          test "$pages" -gt 40

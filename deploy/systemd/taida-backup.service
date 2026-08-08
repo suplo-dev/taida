@@ -1,0 +1,12 @@
+[Unit]
+Description=Taida — database and media backup
+Documentation=file:///var/www/taida/deploy/README.md
+
+[Service]
+Type=oneshot
+User=taida
+Group=taida
+ExecStart=/var/www/taida/deploy/scripts/backup.sh
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=taida-backup

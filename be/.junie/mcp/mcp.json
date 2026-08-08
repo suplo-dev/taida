@@ -1,0 +1,11 @@
+{
+    "mcpServers": {
+        "laravel-boost": {
+            "command": "/Users/suplo/.config/herd-lite/bin/php",
+            "args": [
+                "/Users/suplo/dev/taida/be/artisan",
+                "boost:mcp"
+            ]
+        }
+    }
+}

@@ -1,0 +1,86 @@
+name: Publish site
+
+# Chạy tay là chính. Site tĩnh nên nội dung biên tập viên vừa sửa chỉ lên khi
+# build lại — bấm "Run workflow" ở tab Actions là đủ, không cần lập trình viên.
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+# Hai lần publish chồng nhau sẽ ghi đè lẫn nhau giữa chừng khi rsync.
+concurrency:
+  group: publish-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Build & upload
+    needs: test
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: pnpm
+          cache-dependency-path: fe/pnpm-lock.yaml
+
+      # Khác với bản SSR trước đây, output chỉ là HTML/CSS/JS — không kèm binary
+      # `sharp`, nên không còn ràng buộc phải build đúng kiến trúc máy chủ.
+      #
+      # Đổi lại, build đọc nội dung từ API thật: API phải đang chạy và đã có dữ
+      # liệu, nếu không trang sinh ra sẽ thiếu.
+      - name: Generate
+        working-directory: fe
+        env:
+          NUXT_PUBLIC_API_BASE: ${{ vars.NUXT_PUBLIC_API_BASE }}
+          NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm generate
+
+      - name: Configure SSH
+        run: |
+          install -m 700 -d ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          # Khoá host được ghim sẵn; thiếu nó thì lần kết nối đầu chấp nhận bất
+          # kỳ ai trả lời, coi như dùng SSH mà không được gì.
+          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
+
+      # `--delete` để trang đã xoá trong CMS biến mất khỏi hosting thay vì nằm
+      # lại vĩnh viễn. Dấu `/` cuối nguồn là bắt buộc: copy nội dung bên trong,
+      # không phải cả thư mục.
+      - name: Upload
+        run: |
+          rsync -az --delete \
+            fe/.output/public/ \
+            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ vars.DEPLOY_SITE_PATH }}/"
+
+      - name: Smoke test
+        run: |
+          set -e
+          site="${{ vars.NUXT_PUBLIC_SITE_URL }}"
+          curl -fsS -o /dev/null "$site/"
+          curl -fsS -o /dev/null "$site/en/"
+          curl -fsS -o /dev/null "$site/sitemap.xml"
+
+          # Trang con của admin chỉ tồn tại trong trình duyệt; nếu trả 404 nghĩa
+          # là .htaccess không lên tới nơi (file ẩn, rất dễ mất khi upload).
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$site/admin/services/1")
+          [ "$code" = "200" ] || { echo "::error::.htaccess chưa có trên hosting (SPA fallback hỏng)"; exit 1; }
+
+          # Nén nằm ở .htaccess chứ không ở ứng dụng, nên không có gì khác báo
+          # động nếu mất — chỉ là site nặng gấp 6 lần.
+          enc=$(curl -fsS -o /dev/null -D - -H 'Accept-Encoding: gzip, br' "$site/" | grep -i '^content-encoding:' || true)
+          echo "Home page $enc"
+          echo "$enc" | grep -qiE 'gzip|br' || { echo "::error::HTML đang được trả về không nén"; exit 1; }

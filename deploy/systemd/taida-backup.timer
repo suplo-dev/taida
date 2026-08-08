@@ -1,0 +1,12 @@
+[Unit]
+Description=Taida — nightly backup
+
+[Timer]
+# 03:15 local time; the spread avoids every cron job on the box firing at once.
+OnCalendar=*-*-* 03:15:00
+# A box that was asleep or down still gets its backup on the next boot.
+Persistent=true
+RandomizedDelaySec=5m
+
+[Install]
+WantedBy=timers.target
