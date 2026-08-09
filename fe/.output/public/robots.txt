@@ -1,0 +1,7 @@
+# START nuxt-robots (indexable)
+User-agent: *
+Disallow: /admin
+Disallow: /en/admin
+
+Sitemap: https://taida.crownsoftware.site/sitemap.xml
+# END nuxt-robots

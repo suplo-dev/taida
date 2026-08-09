@@ -38,17 +38,28 @@ export default defineNuxtConfig({
   },
 
   runtimeConfig: {
-    // Server-side base URL — can point at an internal address in production.
-    apiBase: process.env.NUXT_API_BASE || 'http://localhost:8000',
+    /**
+     * Base URL used when rendering on the server — during prerendering, that
+     * is every page of the site.
+     *
+     * It falls back to the public one before falling back to localhost.
+     * Without that middle step, setting only NUXT_API_BASE built the
+     * whole site against whatever happened to be running on port 8000: on a
+     * developer's machine that is the dev database, so the build quietly
+     * shipped dev content and image URLs pointing at localhost. Set
+     * NUXT_API_BASE only when the server should reach the API by a different
+     * address than the browser does.
+     */
+    apiBase: process.env.NUXT_API_BASE || process.env.NUXT_API_BASE || 'http://localhost:8000',
     public: {
       // Browser-side base URL — must be reachable from the client.
-      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000',
-      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+      apiBase: process.env.NUXT_API_BASE || 'http://localhost:8000',
+      siteUrl: process.env.NUXT_SITE_URL || 'http://localhost:3000',
     },
   },
 
   site: {
-    url: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    url: process.env.NUXT_SITE_URL || 'http://localhost:3000',
     name: 'Taida',
   },
 
@@ -95,14 +106,45 @@ export default defineNuxtConfig({
      */
     // `host`, not `hostname`: the check compares against `new URL(src).host`,
     // so leaving the port off silently matches nothing in development.
-    domains: [new URL(process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000').host],
+    domains: [new URL(process.env.NUXT_API_BASE || 'http://localhost:8000').host],
   },
 
   icon: {
-    // Icon names are built at runtime from the `icon` column, so they cannot be
-    // statically collected. Bundling the collection into the server keeps SSR
-    // from reaching out to the Iconify API for every one of them.
-    serverBundle: { collections: ['lucide'] },
+    /**
+     * A server bundle is no use to a site with no server: once the pages are
+     * prerendered there is nothing left to answer an icon request, so anything
+     * not baked into the build falls back to fetching from the Iconify API —
+     * a third-party request on every page load, and nothing at all if it is
+     * unreachable. Prerendering was already hitting that path and logging
+     * "failed to load icon" hundreds of times per build.
+     *
+     * `scan` collects every `i-lucide-…` written literally in the source.
+     */
+    clientBundle: {
+      scan: true,
+
+      /**
+       * These cannot be scanned: they are stored in the `icon` column and
+       * composed at runtime, so nothing in the source spells them out. Adding
+       * a new icon to a service or industry in the CMS means adding it here
+       * too — otherwise it silently renders as a blank space.
+       */
+      icons: [
+        'lucide:badge-check',
+        'lucide:bed-double',
+        'lucide:flask-conical',
+        'lucide:flask-round',
+        'lucide:fuel',
+        'lucide:hard-hat',
+        'lucide:landmark',
+        'lucide:layers',
+        'lucide:search',
+        'lucide:shield-check',
+        'lucide:shopping-bag',
+        'lucide:truck',
+        'lucide:utensils',
+      ],
+    },
   },
 
   hooks: {
@@ -182,7 +224,7 @@ export default defineNuxtConfig({
 
   i18n: {
     // Required for absolute hreflang / canonical links.
-    baseUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
+    baseUrl: process.env.NUXT_SITE_URL || 'http://localhost:3000',
     defaultLocale: 'vi',
     strategy: 'prefix_except_default',
     locales: [

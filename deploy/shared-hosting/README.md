@@ -13,15 +13,21 @@ sinh sẵn thành HTML tĩnh, còn Laravel chạy như một ứng dụng PHP b�
 Trang quản trị `/admin` vẫn chạy được: nó vốn là SPA phía trình duyệt, gọi thẳng
 sang `api.taida.vn`. Sửa nội dung vẫn lưu vào database ngay.
 
-## Điều đánh đổi, cần thống nhất trước
+## Nội dung sửa xong lên site lúc nào
 
-**Nội dung sửa xong sẽ không tự lên site.** HTML được sinh lúc build, nên sau
-mỗi lần biên tập phải chạy lại `pnpm generate` và tải bản mới lên. Đây không
-phải lỗi cấu hình mà là bản chất của việc bỏ tiến trình Node.
+HTML được sinh lúc build, nên **lưu trong CMS không làm trang công khai đổi
+ngay**. Cái đổi ngay là database, API, và những gì hiển thị trong chính CMS.
 
-Nếu khách cần sửa nội dung là thấy ngay, chỉ có hai đường: đưa Nuxt lên một chỗ
-chạy được Node (giữ nguyên Laravel ở hosting này), hoặc chuyển hẳn sang VPS
-theo `deploy/README.md`.
+Việc sinh lại đã được tự động (mục 7): sửa xong, khoảng **90 giây sau** hệ
+thống tự gọi GitHub Actions, thêm **2–3 phút** build là site đổi. Biên tập viên
+không phải nhớ hay bấm gì.
+
+Sửa liên tiếp nhiều thứ chỉ tạo **một** lần build — mỗi lần lưu lại đặt lại
+đồng hồ chờ, nên hệ thống đợi tới khi ngừng sửa mới bắt đầu.
+
+Nếu ngần đó vẫn là quá lâu — ví dụ khách muốn sửa chữ là thấy ngay — thì phải bỏ
+SSG: đưa Nuxt lên chỗ chạy được Node, hoặc chuyển sang VPS theo
+`deploy/README.md`.
 
 ## 1. Yêu cầu hosting
 
@@ -44,17 +50,27 @@ php -v
 Nuxt phải build trên máy có Node 22. Khác với bản SSR, bản tĩnh **không** cần
 build trên Linux — output chỉ là HTML/CSS/JS, không kèm binary `sharp`.
 
+Lần đầu, tạo file cấu hình cho bản production:
+
 ```bash
 cd fe
+cp .env.production.example .env.production   # sửa lại tên miền nếu khác
 pnpm install --frozen-lockfile
-NUXT_PUBLIC_API_BASE=https://api.taida.vn \
-NUXT_PUBLIC_SITE_URL=https://www.taida.vn \
+```
+
+Từ đó về sau chỉ cần:
+
+```bash
 pnpm generate
 ```
 
-Hai biến này bắt buộc phải có **lúc build**. Chúng được nướng vào từng file HTML
-và quyết định danh sách domain `@nuxt/image` được phép xử lý. Sai thì site trỏ
-về `localhost` và không có gì báo lỗi.
+`pnpm generate` đọc `.env.production`, còn `pnpm dev` đọc `.env` — nên chạy dev
+không bao giờ vô tình trỏ vào API production, và ngược lại.
+
+Hai biến trong đó bắt buộc phải có **lúc build**: chúng được nướng vào từng file
+HTML và quyết định danh sách domain `@nuxt/image` được phép xử lý. Sai thì site
+vẫn build xong, vẫn chạy, chỉ là gọi nhầm API hoặc khai báo sai địa chỉ cho
+Google — không có gì báo lỗi.
 
 **API phải chạy được và có dữ liệu trong lúc build** — Nuxt gọi vào đó để dựng
 từng trang. Build lần đầu thì trỏ vào API đã lên hosting.
@@ -99,13 +115,23 @@ kế tiếp trả 401:
 `TRUSTED_PROXIES=*` ở đây là chấp nhận được vì chỉ hạ tầng của nhà cung cấp mới
 tới được PHP; trên VPS tự quản thì nên liệt kê IP cụ thể.
 
+**`APP_URL` quan trọng hơn vẻ ngoài của nó.** Mọi đường dẫn ảnh do admin tải lên
+đều được Laravel dựng từ biến này. Để nguyên `http://localhost` thì API vẫn chạy
+bình thường, admin vẫn thấy ảnh, nhưng site sinh ra sẽ nhúng
+`http://localhost/storage/...` vào từng trang — logo và ảnh bài viết mất sạch với
+người dùng thật, và không có lỗi nào báo.
+
+Nó cũng phải **trùng khít** với `NUXT_API_BASE` bên frontend. Lệch nhau
+thì `@nuxt/image` không nhận ra domain, bỏ qua tối ưu và trả ảnh gốc nguyên kích
+thước — site vẫn hiển thị đúng nên rất dễ bỏ sót.
+
 ## 4. Đưa site tĩnh lên
 
 Copy **toàn bộ nội dung bên trong** `fe/.output/public/` vào `public_html/`
 (nội dung bên trong, không phải cả thư mục).
 
 ```bash
-rsync -az --delete fe/.output/public/ user@host:~/public_html/
+rsync -az --delete fe/.output/public/ hcouhftghosting_suplo@crownsoftware.site:~/domains/taida/fe/
 ```
 
 Dùng FTP thì nhớ bật hiển thị file ẩn — **`.htaccess` là file ẩn**, thiếu nó thì
@@ -138,21 +164,72 @@ Cần khai báo trước trên GitHub:
 | Secret | `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_SSH_KEY` | tài khoản SSH của hosting |
 | Secret | `DEPLOY_KNOWN_HOSTS` | kết quả `ssh-keyscan <host>` |
 | Variable | `DEPLOY_SITE_PATH` | `/home/taida/public_html` |
-| Variable | `NUXT_PUBLIC_SITE_URL` | `https://www.taida.vn` |
-| Variable | `NUXT_PUBLIC_API_BASE` | `https://api.taida.vn` |
+| Variable | `NUXT_SITE_URL` | `https://www.taida.vn` |
+| Variable | `NUXT_API_BASE` | `https://api.taida.vn` |
 
 Làm tay thì vẫn là hai lệnh:
 
 ```bash
 cd fe
-NUXT_PUBLIC_API_BASE=https://api.taida.vn \
-NUXT_PUBLIC_SITE_URL=https://www.taida.vn \
 pnpm generate
 rsync -az --delete .output/public/ user@host:~/public_html/
 ```
 
 Hosting không cho SSH thì bỏ bước rsync và upload `fe/.output/public/` bằng FTP
 — nhớ bật hiển thị file ẩn để `.htaccess` đi cùng.
+
+## 7. Tự sinh lại site sau khi biên tập
+
+Để biên tập viên không phải nhớ bấm gì: mỗi lần lưu nội dung, Laravel đánh dấu
+site đã cũ; một lệnh chạy theo lịch thấy dấu đó thì gọi GitHub Actions build lại.
+
+**Tạo token.** GitHub → Settings → Developer settings → Personal access tokens →
+Fine-grained. Chọn đúng repo này, cấp **một** quyền duy nhất: *Actions:
+Read and write*. Không cần quyền nào khác — token này chỉ được phép bấm nút build.
+
+**Điền vào `.env` của API:**
+
+```env
+PUBLISH_ENABLED=true
+PUBLISH_GITHUB_TOKEN=github_pat_...
+PUBLISH_GITHUB_REPOSITORY=chu-so-huu/ten-repo
+```
+
+**Thêm cron.** Trong cPanel → Cron Jobs, chạy mỗi phút:
+
+```
+* * * * * cd /home/taida/api && php artisan schedule:run >> /dev/null 2>&1
+```
+
+Đây là cron duy nhất Laravel cần; mọi tác vụ định kỳ sau này đều đi qua nó.
+
+**Kiểm tra:**
+
+```bash
+php artisan site:publish            # cho biết vì sao chạy hoặc vì sao bỏ qua
+php artisan site:publish --force    # build ngay, bỏ qua thời gian chờ
+```
+
+Sau khi lưu một nội dung trong CMS, chạy `php artisan site:publish` sẽ báo
+*"Nội dung vẫn đang được sửa, chờ ngừng thay đổi."* — đúng như thiết kế. Đợi quá
+90 giây rồi chạy lại thì nó gọi GitHub thật.
+
+**Chỉnh nhịp độ.** Cả hai mốc thời gian đều nằm trong `.env`, đổi xong chỉ cần
+`php artisan config:clear`, không phải sửa code hay deploy lại:
+
+| Biến | Mặc định | Để làm gì |
+|---|---|---|
+| `PUBLISH_QUIET_PERIOD` | `90` | Giây chờ kể từ lần sửa cuối. Sửa 5 thứ liên tiếp chỉ thành 1 lần build |
+| `PUBLISH_COOLDOWN` | `300` | Giây tối thiểu giữa hai lần build, tránh xếp hàng |
+| `PUBLISH_ENABLED` | `false` | Ở máy dev để `false` cho khỏi build nhầm |
+
+Muốn nội dung lên nhanh hơn thì hạ `PUBLISH_QUIET_PERIOD` — đổi lại mỗi lần lưu
+dễ thành một build riêng. Đừng hạ `PUBLISH_COOLDOWN` xuống dưới thời gian một
+lần build chạy xong (hiện khoảng 2–3 phút), nếu không build sau sẽ chồng lên
+build trước và cái chạy sau chưa chắc là cái mới nhất.
+
+Gọi GitHub thất bại thì site **vẫn được đánh dấu là cũ**, lần chạy sau thử lại —
+thay đổi không bị bỏ quên. Lỗi ghi vào `storage/logs/laravel.log`.
 
 ## Những chỗ hay hỏng
 
@@ -163,6 +240,9 @@ Hosting không cho SSH thì bỏ bước rsync và upload `fe/.output/public/` b
 | Đăng nhập admin OK, request sau 401 | `SESSION_DOMAIN` / `SANCTUM_STATEFUL_DOMAINS` / `FRONTEND_URLS` không khớp |
 | Trình duyệt báo CORS | `FRONTEND_URLS` thiếu domain đang mở |
 | Ảnh upload 404 | chưa chạy `php artisan storage:link` |
-| Sửa nội dung không lên site | đúng như thiết kế — phải build lại (mục 6) |
+| Site thật hiện ảnh vỡ, xem mã nguồn thấy `localhost` | `APP_URL` trong `.env` của API chưa sửa thành tên miền thật |
+| Ảnh tải chậm, không thấy `/_ipx/` trong mã nguồn | `APP_URL` và `NUXT_API_BASE` không trùng nhau |
+| Build ra nội dung cũ / nội dung dev | `.env.production` trỏ sai API, hoặc API production không truy cập được |
+| Sửa nội dung không lên site sau vài phút | thiếu cron `schedule:run`, hoặc `PUBLISH_ENABLED=false`, hoặc token sai — chạy `php artisan site:publish` để nó nói lý do |
 | `pnpm generate` báo 404 giữa chừng | API không truy cập được, hoặc có bản ghi thiếu bản dịch |
 | Build lỗi lạ sau khi đổi cấu hình | xoá `fe/.nuxt` và `fe/.output` rồi build lại |

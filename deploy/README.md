@@ -144,8 +144,8 @@ script kích hoạt. Cần khai báo trên GitHub:
 |---|---|---|
 | Secret | `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_SSH_KEY` | `taida` |
 | Secret | `DEPLOY_KNOWN_HOSTS` | kết quả `ssh-keyscan taida.vn` |
-| Variable | `NUXT_PUBLIC_SITE_URL` | `https://www.taida.vn` |
-| Variable | `NUXT_PUBLIC_API_BASE` | `https://api.taida.vn` |
+| Variable | `NUXT_SITE_URL` | `https://www.taida.vn` |
+| Variable | `NUXT_API_BASE` | `https://api.taida.vn` |
 
 Deploy tay khi cần:
 
@@ -168,7 +168,7 @@ ssh taida@taida.vn /var/www/taida/deploy/scripts/deploy-web.sh 20260805-120000
 kiến trúc máy build; build trên máy Mac rồi copy lên server sẽ chết lúc xử lý ảnh.
 CI đã chạy `ubuntu-latest` nên đúng sẵn — chỉ lưu ý khi build tay.
 
-`NUXT_PUBLIC_API_BASE` **phải có mặt lúc build**, không chỉ lúc chạy: nó sinh ra
+`NUXT_API_BASE` **phải có mặt lúc build**, không chỉ lúc chạy: nó sinh ra
 danh sách domain mà `@nuxt/image` được phép xử lý. Thiếu biến này site vẫn chạy
 bình thường, chỉ là mọi ảnh do admin tải lên — kể cả logo ở đầu mỗi trang — được
 trả nguyên kích thước gốc từ domain API thay vì bản WebP đã thu nhỏ.
