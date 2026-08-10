@@ -19,7 +19,7 @@ return new class extends Migration
             $table->foreignId('category_id')->constrained()->cascadeOnDelete();
             $table->string('locale', 5);
             $table->string('name');
-            $table->string('slug');
+            $table->string('slug', 191);
             $table->text('description')->nullable();
             $table->timestamps();
 

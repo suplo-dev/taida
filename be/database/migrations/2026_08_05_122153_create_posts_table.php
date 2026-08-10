@@ -28,7 +28,7 @@ return new class extends Migration
             $table->foreignId('post_id')->constrained()->cascadeOnDelete();
             $table->string('locale', 5);
             $table->string('title');
-            $table->string('slug');
+            $table->string('slug', 191);
             $table->text('excerpt')->nullable();
             $table->longText('body')->nullable();
             $table->string('meta_title')->nullable();

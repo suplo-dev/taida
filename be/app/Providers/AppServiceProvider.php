@@ -22,6 +22,7 @@ use App\Models\User;
 use App\Observers\ContentObserver;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -59,6 +60,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // utf8mb4 uses 4 bytes per character; shared-hosting MySQL often caps
+        // index keys at 1000 bytes, so varchar(255) indexed columns fail.
+        Schema::defaultStringLength(191);
+
         foreach (self::CACHED_CONTENT_MODELS as $model) {
             $model::observe(ContentObserver::class);
         }

@@ -18,7 +18,7 @@ return new class extends Migration
             $table->foreignId('tag_id')->constrained()->cascadeOnDelete();
             $table->string('locale', 5);
             $table->string('name');
-            $table->string('slug');
+            $table->string('slug', 191);
             $table->timestamps();
 
             $table->unique(['tag_id', 'locale']);
