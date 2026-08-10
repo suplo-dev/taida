@@ -285,16 +285,16 @@
             .container { padding: 1rem; }
             th, td { padding: 0.5rem 0.75rem; }
           }
-
+          
         </style>
       </head>
       <body>
-
+        
         <div class="container">
           <div class="header">
             <h1>Taida</h1>
             <div class="header-meta">
-
+              
               <xsl:if test="count(sitemap:sitemapindex/sitemap:sitemap) &gt; 0">
                 <xsl:value-of select="count(sitemap:sitemapindex/sitemap:sitemap)"/> sitemaps
               </xsl:if>
@@ -353,7 +353,7 @@
                         <a href="{$itemURL}">
                           <xsl:value-of select="sitemap:loc"/>
                         </a>
-
+                        
                       </td>
                       <td><span class="count"><xsl:value-of select="count(image:image)"/></span></td>
 <td><span class="count"><xsl:value-of select="concat(substring(sitemap:lastmod,0,11),concat(' ', substring(sitemap:lastmod,12,5)),concat(' ', substring(sitemap:lastmod,20,6)))"/></span></td>
@@ -364,7 +364,7 @@
             </div>
           </xsl:if>
         </div>
-
+        
       </body>
     </html>
   </xsl:template>
