@@ -21,7 +21,10 @@ export function useSeo(input: MaybeRefOrGetter<SeoInput>) {
 
   // Pages without their own artwork get a generated share card; ones with a
   // cover image use it directly, which always beats a rendered template.
-  if (!resolved.value.image) {
+  // Static hosting (`ogImage.zeroRuntime`) bakes these at build time — calling
+  // defineOgImage in the browser would try to spin up the runtime renderer and
+  // freeze the tab on pages that have no cover image.
+  if (import.meta.server && !resolved.value.image) {
     defineOgImage('OgTemplate', {
       title: resolved.value.title,
       description: resolved.value.description ?? '',
