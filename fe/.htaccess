@@ -14,13 +14,17 @@ DirectoryIndex index.html
 
 <IfModule mod_rewrite.c>
     RewriteEngine On
+    RewriteBase /
 
-    # --- 1. Không cho gọi thẳng /.output/... từ bên ngoài --------------------
+    # --- 1. Không cho URL nội bộ /.output/public/... lọt ra ngoài ------------
     #
-    # Nếu để mở, mỗi trang có hai địa chỉ (`/dich-vu/` và
-    # `/.output/public/dich-vu/`) và Google chấm site trùng lặp. REDIRECT_STATUS
-    # rỗng nghĩa là request đến thẳng từ trình duyệt; với rewrite nội bộ ở bước
-    # 3 thì Apache đã đặt biến này, nên luồng bên trong không bị chặn.
+    # Khi Apache rewrite một thư mục (vd. /dich-vu/slug/) sang .output/public/…,
+    # mod_dir có thể phát 301 DirectorySlash và đẩy path nội bộ lên thanh địa chỉ.
+    # Redirect về URL sạch thay vì 403 để người dùng (và Google) không kẹt.
+    RewriteCond %{ENV:REDIRECT_STATUS} ^$
+    RewriteRule ^\.output/public/(.*)$ /$1 [R=301,L,NC]
+
+    # Chặn mọi path .output/ khác (mã nguồn, cấu hình build…).
     RewriteCond %{ENV:REDIRECT_STATUS} ^$
     RewriteRule ^\.output/ - [F,L]
 
@@ -35,9 +39,17 @@ DirectoryIndex index.html
 
     # --- 3. Đưa mọi request vào thư mục build -------------------------------
     #
-    # Nhờ bước này mà `nuxt.config.ts`, `package.json`, `app/`, `server/`,
-    # `.env.production`… tự động không với tới được: chúng không có bản sao nào
-    # bên trong `.output/public/`.
+    # Thư mục phải trỏ thẳng tới index.html. Nếu rewrite dừng ở thư mục,
+    # DirectorySlash sẽ 301 sang /.output/public/… — lộ path nội bộ (bước 1).
+    RewriteRule ^$ .output/public/index.html [L]
+
+    RewriteCond %{DOCUMENT_ROOT}/.output/public/$1/index.html -f
+    RewriteRule ^(.+?)/?$ .output/public/$1/index.html [L]
+
+    RewriteCond %{REQUEST_URI} !^/\.output/public/
+    RewriteCond %{DOCUMENT_ROOT}/.output/public/$1 -f
+    RewriteRule ^(.+)$ .output/public/$1 [L]
+
     RewriteCond %{REQUEST_URI} !^/\.output/public/
     RewriteRule ^(.*)$ .output/public/$1 [L]
 
