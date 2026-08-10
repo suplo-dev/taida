@@ -1,1 +1,0 @@
-import{Zt as e,it as t,ot as n}from"./0qlU9qKK.js";import{t as r}from"./DjWUjULt.js";var i=t(async t=>{let i,a,{user:o,fetchUser:s}=r();if(o.value||([i,a]=e(()=>s()),await i,a()),!o.value)return n({path:`/admin/login`,query:{redirect:t.fullPath}})},1);export{i as default};

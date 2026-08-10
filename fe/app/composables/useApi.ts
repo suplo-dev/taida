@@ -19,6 +19,7 @@ export function useApiData<T>(
   options: UseFetchOptions<T> = {},
 ) {
   const { locale } = useI18n()
+  const nuxtApp = useNuxtApp()
 
   const key = computed(() => [
     typeof url === 'function' ? url() : url,
@@ -28,8 +29,11 @@ export function useApiData<T>(
 
   return useFetch(url, {
     ...options,
-    $fetch: useNuxtApp().$api,
+    $fetch: nuxtApp.$api,
     key: () => key.value,
     watch: [key, locale, ...(options.watch === false ? [] : (options.watch ?? []))],
+    getCachedData(k, nuxt) {
+      return nuxt.payload.data[k] ?? nuxt.static.data[k]
+    },
   } as UseFetchOptions<T>)
 }

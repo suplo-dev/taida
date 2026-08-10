@@ -1,1 +1,0 @@
-import{Ji as e,di as t}from"./0qlU9qKK.js";import{i as n}from"./Cn_hVZjU.js";function r(r){let i=n();t(()=>{let t=e(r);t&&i(Object.fromEntries(Object.entries(t).map(([e,t])=>[e,{slug:t}])))})}export{r as t};

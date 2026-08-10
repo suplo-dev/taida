@@ -9,16 +9,27 @@ import type { LocalisedSlugs } from '~/types/api'
  */
 export function useLocalisedSlugs(slugs: MaybeRefOrGetter<LocalisedSlugs | undefined>) {
   const setI18nParams = useSetI18nParams()
+  let registered = ''
 
-  watchEffect(() => {
-    const value = toValue(slugs)
+  watch(
+    () => toValue(slugs),
+    (value) => {
+      if (!value) {
+        return
+      }
 
-    if (!value) {
-      return
-    }
+      const next = JSON.stringify(value)
 
-    setI18nParams(Object.fromEntries(
-      Object.entries(value).map(([locale, slug]) => [locale, { slug }]),
-    ))
-  })
+      if (next === registered) {
+        return
+      }
+
+      registered = next
+
+      setI18nParams(Object.fromEntries(
+        Object.entries(value).map(([locale, slug]) => [locale, { slug }]),
+      ))
+    },
+    { immediate: true, flush: 'post' },
+  )
 }

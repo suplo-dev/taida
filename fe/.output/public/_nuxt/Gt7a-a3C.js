@@ -1,0 +1,1 @@
+import{Ji as e,ui as t}from"./0qlU9qKK.js";import{i as n}from"./Cn_hVZjU.js";import{t as r}from"./CNs_Ozdc.js";function i(){r({key:e=>e.path})}function a(r){let i=n(),a=``;t(()=>e(r),e=>{if(!e)return;let t=JSON.stringify(e);t!==a&&(a=t,i(Object.fromEntries(Object.entries(e).map(([e,t])=>[e,{slug:t}]))))},{immediate:!0,flush:`post`})}export{i as n,a as t};

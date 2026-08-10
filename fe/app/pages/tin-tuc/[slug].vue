@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import type { Envelope, Post, PostDetail } from '~/types/api'
 
+useDetailPageKey()
+
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
 const route = useRoute()
