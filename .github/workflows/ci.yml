@@ -121,11 +121,17 @@ jobs:
           test -f .output/public/index.html
           test -f .output/public/en/index.html
           test -f .output/public/sitemap.xml
-          # Hidden file, and the one most easily lost in an FTP upload; without
-          # it the site ships uncompressed and /admin breaks on reload.
-          test -f .output/public/.htaccess
-          # Pre-compressed variants are what static hosting serves.
+          # Pre-compressed variants are what static hosting serves. Missing them
+          # costs about six times the transfer size, and nothing else notices.
           test -f .output/public/index.html.br
+          # The domain points at `fe/`, so this file is what serves the site at
+          # all: it forwards requests into the build and keeps the source out of
+          # reach. A build without it is not deployable.
+          test -f .htaccess
+          # Exactly one .htaccess under fe/. A second one inside the output would
+          # override the rules above for that directory instead of adding to
+          # them, which is how the source directory ended up publicly readable.
+          test "$(find . -name .htaccess -not -path './node_modules/*' | wc -l)" -eq 1
           pages=$(find .output/public -name index.html | wc -l)
           echo "Generated $pages pages"
           test "$pages" -gt 40

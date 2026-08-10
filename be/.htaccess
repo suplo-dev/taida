@@ -1,0 +1,71 @@
+# Cấu hình Apache khi tên miền API được trỏ thẳng vào thư mục này.
+#
+# Đúng ra document root phải là `be/public`. Nếu bảng điều khiển hosting cho
+# chọn document root, hãy chọn `.../be/public` và **xoá file này đi** — đó là
+# cách an toàn hơn hẳn.
+#
+# Khi buộc phải trỏ vào `be/`, cả `.env`, `vendor/`, `storage/` đều nằm trong
+# vùng web phục vụ được. File này làm hai việc, theo đúng thứ tự đó:
+#
+#   1. Chặn mọi thứ không thuộc `public/`. Chặn trước, vì một lỗi ở bước 2 mà
+#      không có bước 1 nghĩa là cả file `.env` — chứa mật khẩu database và
+#      APP_KEY — tải về được bằng trình duyệt.
+#   2. Đẩy phần còn lại vào `public/`, nơi Laravel đã có .htaccess riêng.
+
+# Không cho liệt kê thư mục, và tắt MultiViews vì nó khiến /index trỏ nhầm sang
+# /index.php trước khi rewrite kịp chạy.
+Options -Indexes -MultiViews
+
+# Khai báo tường minh, đừng tin vào mặc định của hosting. Rewrite bên dưới biến
+# `/` thành `public/` — một thư mục — và luật front controller của Laravel bỏ
+# qua thư mục, nên nếu DirectoryIndex không có `index.php` thì đúng trang gốc
+# của tên miền API trả về 404 trong khi mọi đường dẫn khác vẫn chạy.
+DirectoryIndex index.php index.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # --- 1. Chặn ------------------------------------------------------------
+
+    # File nhạy cảm ở gốc dự án.
+    RewriteRule ^(\.env|\.env\..*|\.git|\.gitignore|composer\.(json|lock)|package(-lock)?\.json|artisan|phpunit\.xml|README\.md) - [F,L]
+
+    # Toàn bộ thư mục mã nguồn.
+    #
+    # `storage` cố tình KHÔNG có trong danh sách này. Ảnh do admin tải lên có
+    # địa chỉ `/storage/media/...`, và luật ở bước 2 biến nó thành
+    # `public/storage/media/...` — đi qua symlink, chỉ chạm tới đĩa `public`.
+    # Thư mục `storage/` thật (log, cache, file riêng tư) không bao giờ với tới
+    # được vì mọi request đều bị thêm tiền tố `public/`. Chặn `storage` ở đây
+    # làm mọi ảnh trên site trả về 403.
+    RewriteRule ^(app|bootstrap|config|database|resources|routes|tests|vendor)(/|$) - [F,L]
+
+    # Mọi file ẩn khác, trừ .well-known để cấp chứng chỉ SSL còn chạy được.
+    RewriteRule (^|/)\.(?!well-known)[^/]* - [F,L]
+
+    # --- 2. Chuyển vào public/ ----------------------------------------------
+
+    # Bỏ dấu `/` thừa ở cuối trước khi chuyển tiếp. Laravel cũng có luật này
+    # trong public/.htaccess, nhưng lúc đó đường dẫn đã mang tiền tố `public/`,
+    # nên nó chuyển hướng người dùng tới `/public/api/...` — vẫn chạy, nhưng
+    # tiền tố nội bộ hiện ra trên thanh địa chỉ.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteCond %{REQUEST_URI} ^(.+)/$
+    RewriteRule ^ %1 [L,R=301]
+
+    # Điều kiện này là bắt buộc: trong .htaccess, cờ [L] khiến Apache chạy lại
+    # từ đầu với đường dẫn mới, nên nếu không loại trừ thì `public/x` sẽ thành
+    # `public/public/x` rồi lặp vô hạn cho tới khi Apache trả 500.
+    RewriteCond %{REQUEST_URI} !^/public/
+    RewriteRule ^(.*)$ public/$1 [L]
+</IfModule>
+
+# Nếu mod_rewrite không bật, phần chặn ở trên không chạy. Hai khối dưới đây là
+# lớp phòng thủ cuối, không phụ thuộc module nào.
+<FilesMatch "^\.env">
+    Require all denied
+</FilesMatch>
+
+<FilesMatch "^(composer\.(json|lock)|artisan|phpunit\.xml)$">
+    Require all denied
+</FilesMatch>

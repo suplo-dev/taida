@@ -40,17 +40,16 @@ export default defineNuxtConfig({
   runtimeConfig: {
     /**
      * Base URL used when rendering on the server — during prerendering, that
-     * is every page of the site.
+     * is every page of the site. Same value as the browser uses.
      *
-     * It falls back to the public one before falling back to localhost.
-     * Without that middle step, setting only NUXT_API_BASE built the
-     * whole site against whatever happened to be running on port 8000: on a
-     * developer's machine that is the dev database, so the build quietly
-     * shipped dev content and image URLs pointing at localhost. Set
-     * NUXT_API_BASE only when the server should reach the API by a different
-     * address than the browser does.
+     * Keeping it on one variable matters: while the server and the browser
+     * read separate ones, setting only the browser's built the whole site
+     * against whatever happened to be running on port 8000. On a developer's
+     * machine that is the dev database, so a "production" build quietly
+     * shipped dev content and image URLs pointing at localhost, and reported
+     * success.
      */
-    apiBase: process.env.NUXT_API_BASE || process.env.NUXT_API_BASE || 'http://localhost:8000',
+    apiBase: process.env.NUXT_API_BASE || 'http://localhost:8000',
     public: {
       // Browser-side base URL — must be reachable from the client.
       apiBase: process.env.NUXT_API_BASE || 'http://localhost:8000',
