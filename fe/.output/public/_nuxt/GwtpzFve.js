@@ -1,0 +1,1 @@
+import{t as e}from"./0qlU9qKK.js";import{n as t}from"./CNjGcMHp.js";import{t as n}from"./SQ18eNPj.js";function r(){let r=n(),{locale:i}=t();return e(`site:chrome:${i.value}`,async()=>{let[e,t,n]=await Promise.all([r(`/settings`),r(`/menus/header`),r(`/menus/footer`)]);return{settings:e.data,header:t.data,footer:n.data}},{watch:[i]})}export{r as t};

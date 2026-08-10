@@ -1,1 +1,0 @@
-import{Bn as e,Ir as t,Zn as n}from"./0qlU9qKK.js";import{t as r}from"./CNs_Ozdc2.js";import{t as i}from"./RSodNTtG2.js";var a=n({__name:`index`,setup(n){return r({layout:`admin`,middleware:`auth`}),(n,r)=>{let a=i;return t(),e(a,{endpoint:`services`,title:`Dịch vụ`,subtitle:`Bốn trụ cột và các dịch vụ con bên dưới.`})}}});export{a as default};

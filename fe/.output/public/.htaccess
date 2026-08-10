@@ -1,0 +1,155 @@
+# Apache config for the static site. Copied to `.output/public/` on `pnpm generate`.
+# Document root on hosting must point here (not the `fe/` repo folder).
+
+Options -Indexes -MultiViews
+DirectoryIndex index.html
+
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteBase /
+
+    # Already a real file — serve as-is.
+    RewriteCond %{REQUEST_FILENAME} -f
+    RewriteRule ^ - [L]
+
+    # SPA fallback: /admin/services/12 exists only in the browser.
+    RewriteCond %{REQUEST_FILENAME} !-f
+    RewriteCond %{REQUEST_FILENAME} !-d
+    RewriteRule ^admin(/.*)?$ /200.html [L]
+
+    # Directory → index.html (avoids DirectorySlash leaking internal paths).
+    RewriteRule ^$ /index.html [L]
+
+    RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
+    RewriteRule ^(.+?)/?$ /$1/index.html [L]
+
+    # Pre-compressed assets — skip *_payload.json (Nuxt client navigation).
+    RewriteCond %{REQUEST_URI} !_payload\.json$
+    RewriteCond %{HTTP:Accept-Encoding} br
+    RewriteCond %{REQUEST_FILENAME}.br -f
+    RewriteRule ^(.*)$ $1.br [QSA,L]
+
+    RewriteCond %{REQUEST_URI} !_payload\.json$
+    RewriteCond %{HTTP:Accept-Encoding} gzip
+    RewriteCond %{REQUEST_FILENAME}.gz -f
+    RewriteRule ^(.*)$ $1.gz [QSA,L]
+</IfModule>
+
+<IfModule mod_headers.c>
+    <FilesMatch "\.html\.br$">
+        Header set Content-Type "text/html; charset=UTF-8"
+        Header set Content-Encoding br
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.html\.gz$">
+        Header set Content-Type "text/html; charset=UTF-8"
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.json\.br$">
+        Header set Content-Type "application/json; charset=UTF-8"
+        Header set Content-Encoding br
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.json\.gz$">
+        Header set Content-Type "application/json; charset=UTF-8"
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.(js|mjs)\.br$">
+        Header set Content-Type "application/javascript; charset=UTF-8"
+        Header set Content-Encoding br
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.(js|mjs)\.gz$">
+        Header set Content-Type "application/javascript; charset=UTF-8"
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.css\.br$">
+        Header set Content-Type "text/css; charset=UTF-8"
+        Header set Content-Encoding br
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.css\.gz$">
+        Header set Content-Type "text/css; charset=UTF-8"
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.svg\.br$">
+        Header set Content-Type "image/svg+xml"
+        Header set Content-Encoding br
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.svg\.gz$">
+        Header set Content-Type "image/svg+xml"
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.xml\.br$">
+        Header set Content-Type "application/xml; charset=UTF-8"
+        Header set Content-Encoding br
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.xml\.gz$">
+        Header set Content-Type "application/xml; charset=UTF-8"
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.woff2\.br$">
+        Header set Content-Type "font/woff2"
+        Header set Content-Encoding br
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+    <FilesMatch "\.woff2\.gz$">
+        Header set Content-Type "font/woff2"
+        Header set Content-Encoding gzip
+        Header append Vary Accept-Encoding
+    </FilesMatch>
+
+    Header always set X-Content-Type-Options "nosniff"
+    Header always set X-Frame-Options "SAMEORIGIN"
+    Header always set Referrer-Policy "strict-origin-when-cross-origin"
+
+    <FilesMatch "^200\.html(\.br|\.gz)?$">
+        Header always set X-Robots-Tag "noindex, nofollow"
+    </FilesMatch>
+
+    <FilesMatch "\.(js|mjs|css|woff2)(\.br|\.gz)?$">
+        Header set Cache-Control "public, max-age=31536000, immutable"
+    </FilesMatch>
+
+    <FilesMatch "\.html(\.br|\.gz)?$">
+        Header set Cache-Control "public, max-age=0, must-revalidate"
+    </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+    RemoveType .br .gz
+    AddType text/html .html .html.br .html.gz
+    AddType text/css .css .css.br .css.gz
+    AddType application/javascript .js .mjs .js.br .mjs.br .js.gz .mjs.gz
+    AddType application/json .json .json.br .json.gz
+    AddType image/svg+xml .svg .svg.br .svg.gz
+    AddType image/webp .webp .webp.br .webp.gz
+    AddType font/woff2 .woff2 .woff2.br .woff2.gz
+    AddType application/xml .xml .xml.br .xml.gz
+</IfModule>
+
+<IfModule mod_expires.c>
+    ExpiresActive On
+
+    <FilesMatch "\.(js|mjs|css|woff2)(\.br|\.gz)?$">
+        ExpiresDefault "access plus 1 year"
+    </FilesMatch>
+
+    <FilesMatch "\.(jpg|jpeg|png|webp|avif|gif|ico|svg)(\.br|\.gz)?$">
+        ExpiresDefault "access plus 30 days"
+    </FilesMatch>
+
+    <FilesMatch "\.html(\.br|\.gz)?$">
+        ExpiresDefault "access plus 0 seconds"
+    </FilesMatch>
+</IfModule>
+
+ErrorDocument 404 /404.html

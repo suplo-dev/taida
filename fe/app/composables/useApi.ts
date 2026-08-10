@@ -29,7 +29,7 @@ export function useApiData<T>(
   return useFetch(url, {
     ...options,
     $fetch: useNuxtApp().$api,
-    key: key.value,
-    watch: [locale, ...(options.watch === false ? [] : (options.watch ?? []))],
+    key: () => key.value,
+    watch: [key, locale, ...(options.watch === false ? [] : (options.watch ?? []))],
   } as UseFetchOptions<T>)
 }

@@ -1,1 +1,0 @@
-import{Ht as e,Ji as t,Rn as n}from"./0qlU9qKK.js";import{n as r,u as i}from"./CNjGcMHp.js";function a(){return e().$api}function o(a,o={}){let{locale:s}=r(),c=n(()=>[typeof a==`function`?a():a,s.value,JSON.stringify(t(o.query)??{})].join(`:`));return i(a,{...o,$fetch:e().$api,key:c.value,watch:[s,...o.watch===!1?[]:o.watch??[]]},`$AtcKF-4Lhi`)}export{o as n,a as t};

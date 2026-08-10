@@ -15,7 +15,7 @@ provide('availableLocales', locales)
   <UApp>
     <NuxtRouteAnnouncer />
     <NuxtLayout>
-      <NuxtPage />
+      <NuxtPage :key="$route.fullPath" />
     </NuxtLayout>
   </UApp>
 </template>
