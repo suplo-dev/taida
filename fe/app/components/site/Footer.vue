@@ -14,7 +14,7 @@ const socialIcons: Record<string, string> = {
 </script>
 
 <template>
-  <footer class="mt-20 bg-primary-950 text-primary-200">
+  <footer class="mt-20 bg-primary-600 text-primary-200">
     <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
       <div class="grid gap-10 md:grid-cols-4">
         <div class="md:col-span-2">
@@ -56,7 +56,7 @@ const socialIcons: Record<string, string> = {
         </nav>
       </div>
 
-      <div class="mt-12 flex flex-col gap-4 border-t border-primary-900 pt-6 sm:flex-row sm:items-center sm:justify-between">
+      <div class="mt-12 flex flex-col gap-4 border-t border-primary-600 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-xs">© {{ year }} Taida. {{ t('footer.rights') }}</p>
 
         <div v-if="chrome?.settings.social" class="flex items-center gap-3">

@@ -60,7 +60,7 @@ useSeo(() => ({ title: query.value ? `${t('search.resultsFor')} “${query.value
                   :to="localePath({ name: 'dich-vu-slug', params: { slug: item.slug } })"
                   class="block px-5 py-4 transition hover:bg-neutral-50"
                 >
-                  <p class="font-medium text-primary-900">{{ item.name }}</p>
+                  <p class="font-medium text-primary-600">{{ item.name }}</p>
                   <p v-if="item.excerpt" class="mt-1 line-clamp-2 text-sm text-neutral-600">{{ item.excerpt }}</p>
                 </NuxtLink>
               </li>
@@ -75,7 +75,7 @@ useSeo(() => ({ title: query.value ? `${t('search.resultsFor')} “${query.value
                   :to="localePath({ name: 'nganh-nghe-slug', params: { slug: item.slug } })"
                   class="block px-5 py-4 transition hover:bg-neutral-50"
                 >
-                  <p class="font-medium text-primary-900">{{ item.name }}</p>
+                  <p class="font-medium text-primary-600">{{ item.name }}</p>
                   <p v-if="item.excerpt" class="mt-1 line-clamp-2 text-sm text-neutral-600">{{ item.excerpt }}</p>
                 </NuxtLink>
               </li>
@@ -90,7 +90,7 @@ useSeo(() => ({ title: query.value ? `${t('search.resultsFor')} “${query.value
                   :to="localePath({ name: 'tin-tuc-slug', params: { slug: item.slug } })"
                   class="block px-5 py-4 transition hover:bg-neutral-50"
                 >
-                  <p class="font-medium text-primary-900">{{ item.title }}</p>
+                  <p class="font-medium text-primary-600">{{ item.title }}</p>
                   <p v-if="item.excerpt" class="mt-1 line-clamp-2 text-sm text-neutral-600">{{ item.excerpt }}</p>
                 </NuxtLink>
               </li>

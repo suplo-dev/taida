@@ -38,7 +38,7 @@ useSeo(() => ({
 <template>
   <div>
     <!-- 1. Hero -->
-    <section class="relative isolate overflow-hidden bg-gradient-to-br from-primary-900 via-primary-900 to-primary-950">
+    <section class="relative isolate overflow-hidden bg-gradient-to-br from-primary-600 via-primary-600 to-primary-700">
       <div class="absolute inset-0 opacity-20" aria-hidden="true">
         <div class="absolute -right-24 top-1/2 size-[32rem] -translate-y-1/2 rounded-full bg-accent-500 blur-3xl" />
       </div>
@@ -79,7 +79,7 @@ useSeo(() => ({
           v-for="service in featured"
           :key="service.id"
           :to="localePath({ name: 'dich-vu-slug', params: { slug: service.slug } })"
-          class="group relative overflow-hidden rounded-lg bg-gradient-to-br from-primary-800 to-primary-950 p-8 text-white transition hover:shadow-xl"
+          class="group relative overflow-hidden rounded-lg bg-gradient-to-br from-primary-500 to-primary-700 p-8 text-white transition hover:shadow-xl"
         >
           <UIcon :name="`i-lucide-${service.icon || 'layers'}`" class="size-9 text-accent-400" />
           <h2 class="mt-5 text-2xl font-semibold">{{ service.name }}</h2>

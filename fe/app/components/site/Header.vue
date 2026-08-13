@@ -37,7 +37,7 @@ onClickOutside(header, () => (openPanel.value = null))
 </script>
 
 <template>
-  <header ref="header" class="sticky top-0 z-50 bg-primary-900 text-white">
+  <header ref="header" class="sticky top-0 z-50 bg-primary-600 text-white">
     <div class="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6 lg:px-8">
       <SiteLogo :logo="chrome?.settings.logo" />
 
@@ -93,8 +93,11 @@ onClickOutside(header, () => (openPanel.value = null))
           and a plain link is rendered before that. This component leaves a
           marker that i18n rewrites after the render finishes, which is what
           makes the switcher survive prerendering.
+
+          Mobile only: from md up the utility bar carries the region picker,
+          and two switchers stacked one above the other would just be noise.
         -->
-        <div class="flex items-center gap-1 text-xs font-medium">
+        <div class="flex items-center gap-1 text-xs font-medium md:hidden">
           <SwitchLocalePathLink
             locale="vi"
             class="px-1"
@@ -129,7 +132,7 @@ onClickOutside(header, () => (openPanel.value = null))
       <div v-if="openPanel" class="absolute inset-x-0 hidden border-t-2 border-accent-500 bg-white shadow-xl md:block">
         <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
           <div class="mb-5 flex items-baseline justify-between">
-            <h2 class="text-lg font-semibold text-primary-900">
+            <h2 class="text-lg font-semibold text-primary-600">
               {{ openPanel === 'services' ? t('nav.services') : t('nav.industries') }}
             </h2>
             <NuxtLink
@@ -144,7 +147,7 @@ onClickOutside(header, () => (openPanel.value = null))
             <div v-for="item in (openPanel === 'services' ? catalogues?.services : catalogues?.industries) ?? []" :key="item.id">
               <NuxtLink
                 :to="localePath({ name: openPanel === 'services' ? 'dich-vu-slug' : 'nganh-nghe-slug', params: { slug: item.slug } })"
-                class="font-medium text-primary-900 hover:text-primary-600"
+                class="font-medium text-primary-600 hover:text-primary-600"
               >
                 {{ item.name }}
               </NuxtLink>
@@ -165,7 +168,7 @@ onClickOutside(header, () => (openPanel.value = null))
     </Transition>
 
     <!-- Mobile accordion -->
-    <div v-if="mobileOpen" class="border-t border-primary-800 bg-primary-900 md:hidden">
+    <div v-if="mobileOpen" class="border-t border-primary-800 bg-primary-600 md:hidden">
       <nav class="space-y-1 px-4 py-4">
         <details v-for="group in ([
           { key: 'industries', label: t('nav.industries'), to: 'nganh-nghe', items: catalogues?.industries ?? [] },
@@ -192,6 +195,20 @@ onClickOutside(header, () => (openPanel.value = null))
         >
           {{ link.label }}
         </NuxtLink>
+
+        <!-- The utility bar is hidden at this width, so its links live here instead. -->
+        <div v-if="chrome?.utility.length" class="mt-2 border-t border-primary-800 pt-2">
+          <NuxtLink
+            v-for="link in chrome.utility"
+            :key="link.id"
+            :to="link.url ?? '/'"
+            :target="link.opensInNewTab ? '_blank' : undefined"
+            :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
+            class="block py-2 text-xs text-primary-300"
+          >
+            {{ link.label }}
+          </NuxtLink>
+        </div>
       </nav>
     </div>
   </header>

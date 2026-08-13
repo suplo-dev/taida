@@ -20,7 +20,7 @@ const props = defineProps<{
 const gradient = computed(() => {
   // Deterministic tint per title so a grid does not look monotonous.
   const seed = [...props.title].reduce((sum, char) => sum + char.charCodeAt(0), 0)
-  return ['from-primary-800 to-primary-950', 'from-primary-700 to-primary-900', 'from-accent-700 to-primary-900'][seed % 3]
+  return ['from-primary-500 to-primary-700', 'from-primary-700 to-primary-600', 'from-accent-700 to-primary-600'][seed % 3]
 })
 </script>
 
@@ -52,7 +52,7 @@ const gradient = computed(() => {
 
       <p v-if="meta" class="mb-1.5 text-xs font-medium uppercase tracking-wide text-primary-500">{{ meta }}</p>
 
-      <h3 class="font-semibold text-primary-900 transition group-hover:text-primary-600">
+      <h3 class="font-semibold text-primary-600 transition group-hover:text-primary-600">
         {{ title }}
       </h3>
 

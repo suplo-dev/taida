@@ -42,4 +42,9 @@ class MenuItemFactory extends Factory
     {
         return $this->state(['location' => MenuLocation::Footer]);
     }
+
+    public function utility(): static
+    {
+        return $this->state(['location' => MenuLocation::Utility]);
+    }
 }

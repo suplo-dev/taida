@@ -53,7 +53,7 @@ useSeo(() => ({
         {{ post.category.name }}
       </p>
 
-      <h1 class="mt-2 text-3xl font-bold leading-tight tracking-tight text-primary-900 sm:text-4xl">
+      <h1 class="mt-2 text-3xl font-bold leading-tight tracking-tight text-primary-600 sm:text-4xl">
         {{ post.title }}
       </h1>
 

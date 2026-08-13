@@ -112,6 +112,12 @@ kế tiếp trả 401:
 | `FRONTEND_URLS` | `https://www.taida.vn,https://taida.vn` |
 | `TRUSTED_PROXIES` | `*` |
 
+Môi trường staging (ví dụ `taida.crownsoftware.site` / `taida-api.crownsoftware.site`)
+dùng cùng quy tắc — xem `deploy/env/api.env.staging.example`. Nếu `SESSION_DOMAIN`
+vẫn là `localhost` thì cookie CSRF/session được set với `domain=localhost` và trình
+duyệt **không lưu** — login sẽ báo *"This request did not arrive from a stateful
+frontend"*. Sau khi sửa `.env` trên server, chạy `php artisan config:cache`.
+
 `TRUSTED_PROXIES=*` ở đây là chấp nhận được vì chỉ hạ tầng của nhà cung cấp mới
 tới được PHP; trên VPS tự quản thì nên liệt kê IP cụ thể.
 

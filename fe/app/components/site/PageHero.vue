@@ -5,7 +5,7 @@ defineProps<{ title: string, subtitle?: string | null, cover?: Media | null }>()
 </script>
 
 <template>
-  <section class="relative isolate overflow-hidden bg-primary-900">
+  <section class="relative isolate overflow-hidden bg-primary-600">
     <NuxtImg
       v-if="cover"
       :src="cover.url"

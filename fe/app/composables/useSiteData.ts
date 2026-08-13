@@ -11,8 +11,8 @@ export interface SiteSettings {
 }
 
 /**
- * Site chrome — settings plus both menus — fetched once per locale and shared
- * by the header, the footer and any page that needs it.
+ * Site chrome — settings plus every menu — fetched once per locale and shared
+ * by the utility bar, the header, the footer and any page that needs it.
  */
 export function useSiteData() {
   const api = useApi()
@@ -21,13 +21,19 @@ export function useSiteData() {
   return useAsyncData(
     `site:chrome:${locale.value}`,
     async () => {
-      const [settings, header, footer] = await Promise.all([
+      const [settings, header, footer, utility] = await Promise.all([
         api<Envelope<SiteSettings>>('/settings'),
         api<Envelope<MenuItem[]>>('/menus/header'),
         api<Envelope<MenuItem[]>>('/menus/footer'),
+        api<Envelope<MenuItem[]>>('/menus/utility'),
       ])
 
-      return { settings: settings.data, header: header.data, footer: footer.data }
+      return {
+        settings: settings.data,
+        header: header.data,
+        footer: footer.data,
+        utility: utility.data,
+      }
     },
     { watch: [locale] },
   )

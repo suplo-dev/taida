@@ -1,1 +1,0 @@
-import{Bn as e,Ir as t,Zn as n}from"./0qlU9qKK.js";import{t as r}from"./CNs_Ozdc.js";import{t as i}from"./CG964XAH2.js";var a=n({__name:`index`,setup(n){return r({layout:`admin`,middleware:`auth`}),(n,r)=>{let a=i;return t(),e(a,{endpoint:`industries`,title:`Ngành nghề`,subtitle:`Các nhóm ngành và ngành con.`})}}});export{a as default};

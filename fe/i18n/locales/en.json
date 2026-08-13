@@ -47,6 +47,12 @@
     "empty": "No results found.",
     "hint": "Type at least 2 characters to search."
   },
+  "utility": {
+    "edition": "Taida Vietnam",
+    "global": "Global",
+    "vietnam": "Vietnam",
+    "globalSite": "Global site"
+  },
   "footer": {
     "rights": "All rights reserved."
   },

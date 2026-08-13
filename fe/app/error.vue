@@ -8,7 +8,7 @@ const isNotFound = computed(() => props.error.statusCode === 404)
 </script>
 
 <template>
-  <div class="flex min-h-screen flex-col items-center justify-center bg-primary-950 px-4 text-center">
+  <div class="flex min-h-screen flex-col items-center justify-center bg-primary-700 px-4 text-center">
     <p class="text-6xl font-bold text-accent-400">{{ error.statusCode }}</p>
 
     <h1 class="mt-4 text-2xl font-semibold text-white">

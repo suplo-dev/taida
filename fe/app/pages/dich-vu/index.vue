@@ -29,7 +29,7 @@ useSeo(() => ({
           <div class="flex items-start gap-4">
             <UIcon :name="`i-lucide-${service.icon || 'layers'}`" class="mt-1 size-8 shrink-0 text-primary-500" />
             <div class="min-w-0 flex-1">
-              <h2 class="text-xl font-semibold text-primary-900">
+              <h2 class="text-xl font-semibold text-primary-600">
                 <NuxtLink
                   :to="localePath({ name: 'dich-vu-slug', params: { slug: service.slug } })"
                   class="hover:text-primary-600"

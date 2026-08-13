@@ -55,6 +55,18 @@ const width = computed(() => {
       />
     </span>
 
-    <span class="text-xl font-bold tracking-tight">Taida</span>
+    <!--
+      Wordmark and slogan are brand copy, not interface copy: they read the
+      same in both locales, so they stay here rather than in the message files.
+      The slogan is long enough to crowd the mobile header, where it competes
+      with the hotline, search and menu buttons — hence it only appears once
+      there is room for it.
+    -->
+    <span class="flex flex-col leading-none">
+      <span class="text-xl font-bold tracking-tight">Taida</span>
+      <span class="mt-1 hidden text-[10px] font-medium tracking-wide text-primary-200 sm:block">
+        Your Partner for Business Excellence
+      </span>
+    </span>
   </NuxtLink>
 </template>

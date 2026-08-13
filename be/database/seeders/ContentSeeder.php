@@ -281,6 +281,28 @@ class ContentSeeder extends Seeder
                 'vi' => ['title' => 'Chính sách bảo mật', 'slug' => 'chinh-sach-bao-mat'],
                 'en' => ['title' => 'Privacy Policy', 'slug' => 'privacy-policy'],
             ],
+            // Targets of the utility bar; the build crawls every link it finds,
+            // so the menu below can only point at pages that exist.
+            [
+                'key' => 'responsibility',
+                'vi' => ['title' => 'Trách nhiệm', 'slug' => 'trach-nhiem'],
+                'en' => ['title' => 'Responsibility', 'slug' => 'responsibility'],
+            ],
+            [
+                'key' => 'careers',
+                'vi' => ['title' => 'Tuyển dụng', 'slug' => 'tuyen-dung'],
+                'en' => ['title' => 'Careers', 'slug' => 'careers'],
+            ],
+            [
+                'key' => 'press',
+                'vi' => ['title' => 'Báo chí & Truyền thông', 'slug' => 'bao-chi-truyen-thong'],
+                'en' => ['title' => 'Press & Media', 'slug' => 'press-media'],
+            ],
+            [
+                'key' => 'training',
+                'vi' => ['title' => 'Đào tạo', 'slug' => 'dao-tao'],
+                'en' => ['title' => 'Training', 'slug' => 'training'],
+            ],
         ];
 
         foreach ($pages as $data) {
@@ -310,7 +332,20 @@ class ContentSeeder extends Seeder
             ['vi' => ['Chính sách bảo mật', '/chinh-sach-bao-mat'], 'en' => ['Privacy Policy', '/en/privacy-policy']],
         ];
 
-        foreach ([MenuLocation::Header->value => $header, MenuLocation::Footer->value => $footer] as $location => $items) {
+        $utility = [
+            ['vi' => ['Trách nhiệm', '/trach-nhiem'], 'en' => ['Responsibility', '/en/responsibility']],
+            ['vi' => ['Tuyển dụng', '/tuyen-dung'], 'en' => ['Careers', '/en/careers']],
+            ['vi' => ['Báo chí & Truyền thông', '/bao-chi-truyen-thong'], 'en' => ['Press & Media', '/en/press-media']],
+            ['vi' => ['Đào tạo', '/dao-tao'], 'en' => ['Training', '/en/training']],
+        ];
+
+        $menus = [
+            MenuLocation::Header->value => $header,
+            MenuLocation::Footer->value => $footer,
+            MenuLocation::Utility->value => $utility,
+        ];
+
+        foreach ($menus as $location => $items) {
             foreach ($items as $order => $item) {
                 $menuItem = MenuItem::create(['location' => $location, 'sort_order' => $order]);
 

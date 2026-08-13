@@ -74,6 +74,7 @@ class ContentApiTest extends TestCase
         $parent = MenuItem::factory()->create();
         MenuItem::factory()->create(['parent_id' => $parent->id]);
         MenuItem::factory()->footer()->create();
+        MenuItem::factory()->utility()->create();
 
         $this->getJson('/api/v1/menus/header?locale=vi')
             ->assertOk()
@@ -81,6 +82,10 @@ class ContentApiTest extends TestCase
             ->assertJsonCount(1, 'data.0.children');
 
         $this->getJson('/api/v1/menus/footer?locale=vi')
+            ->assertOk()
+            ->assertJsonCount(1, 'data');
+
+        $this->getJson('/api/v1/menus/utility?locale=vi')
             ->assertOk()
             ->assertJsonCount(1, 'data');
     }
