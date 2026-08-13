@@ -4,8 +4,8 @@
  * plain Tailwind utilities — no runtime data fetching, no custom fonts.
  */
 withDefaults(defineProps<{ title?: string, description?: string, siteName?: string }>(), {
-  title: 'Taida',
-  siteName: 'Taida',
+  title: 'TAIDA',
+  siteName: 'TAIDA',
 })
 </script>
 

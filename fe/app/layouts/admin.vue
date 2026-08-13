@@ -17,7 +17,7 @@ const nav = [
 <template>
   <div class="flex min-h-screen bg-neutral-50">
     <aside class="w-60 shrink-0 bg-primary-600 text-white">
-      <div class="px-5 py-4 text-lg font-semibold tracking-tight">Taida CMS</div>
+      <div class="px-5 py-4 text-lg font-semibold tracking-tight">TAIDA CMS</div>
       <nav class="flex flex-col gap-0.5 px-2 pb-4">
         <NuxtLink
           v-for="item in nav"

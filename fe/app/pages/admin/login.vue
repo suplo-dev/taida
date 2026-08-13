@@ -37,7 +37,7 @@ async function submit() {
 <template>
   <div class="flex min-h-screen items-center justify-center bg-primary-700 px-4">
     <form class="w-full max-w-sm rounded-lg bg-white p-8 shadow-xl" @submit.prevent="submit">
-      <h1 class="text-lg font-semibold text-neutral-900">Taida CMS</h1>
+      <h1 class="text-lg font-semibold text-neutral-900">TAIDA CMS</h1>
       <p class="mt-1 mb-6 text-sm text-neutral-500">Đăng nhập để quản trị nội dung.</p>
 
       <div class="space-y-4">

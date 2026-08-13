@@ -63,7 +63,7 @@ const width = computed(() => {
       there is room for it.
     -->
     <span class="flex flex-col leading-none">
-      <span class="text-xl font-bold tracking-tight">Taida</span>
+      <span class="text-xl font-bold tracking-tight">TAIDA</span>
       <span class="mt-1 hidden text-[10px] font-medium tracking-wide text-primary-200 sm:block">
         Your Partner for Business Excellence
       </span>
