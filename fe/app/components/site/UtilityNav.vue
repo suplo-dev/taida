@@ -37,8 +37,20 @@ watch(() => route.fullPath, () => (open.value = false))
     header for its own dropdown to be visible.
   -->
   <div class="relative z-60 hidden bg-white text-black md:block">
-    <div class="mx-auto flex h-9 max-w-7xl items-center px-4 text-xs sm:px-6 lg:px-8">
-      <span class="flex items-center gap-2 font-medium">
+    <!--
+      Set in the body size rather than the usual 12 px — these are the links
+      customers actually ask for, and as fine print they get skipped over — but
+      kept to a compact 40 px band. The breathing room belongs to the header
+      below; a utility strip that competes with it for height just pushes the
+      page down.
+    -->
+    <div class="mx-auto flex h-10 max-w-7xl items-center px-4 text-sm sm:px-6 lg:px-8">
+      <!--
+        Dropped between md and lg: at 14 px the links plus the region picker
+        already need the full width there, and this label is the part a visitor
+        can lose — the flag reappears inside the region panel either way.
+      -->
+      <span class="hidden items-center gap-2 font-semibold lg:flex">
         <SiteFlagVn />
         {{ t('utility.edition') }}
       </span>
@@ -50,22 +62,22 @@ watch(() => route.fullPath, () => (open.value = false))
           :to="link.url ?? '/'"
           :target="link.opensInNewTab ? '_blank' : undefined"
           :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
-          class="border-l border-b-gray-500 px-3 transition first:border-l-0"
+          class="border-l border-b-gray-500 px-4 font-semibold transition hover:text-primary-600 first:border-l-0 lg:px-5"
         >
           {{ link.label }}
         </NuxtLink>
       </nav>
 
-      <div ref="wrapper" class="relative ml-1 border-l border-b-gray-500 pl-3">
+      <div ref="wrapper" class="relative border-l border-b-gray-500 pl-4 lg:pl-5">
         <button
           type="button"
-          class="flex items-center gap-1.5 transition"
+          class="flex items-center gap-1.5 font-semibold transition hover:text-primary-600"
           :aria-expanded="open"
           @click="open = !open"
         >
-          <UIcon name="i-lucide-globe" class="size-3.5" />
+          <UIcon name="i-lucide-globe" class="size-4" />
           {{ t('utility.global') }}
-          <UIcon name="i-lucide-chevron-down" class="size-3 transition" :class="open && 'rotate-180'" />
+          <UIcon name="i-lucide-chevron-down" class="size-3.5 transition" :class="open && 'rotate-180'" />
         </button>
 
         <Transition

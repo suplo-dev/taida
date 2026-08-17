@@ -6,7 +6,8 @@ const localePath = useLocalePath()
 const route = useRoute()
 const router = useRouter()
 
-const term = ref((route.query.q as string) ?? '')
+// Shared with the header field, which is on screen right above this one.
+const term = useSearchTerm()
 const query = computed(() => (route.query.q as string) ?? '')
 
 const { data: results } = await useApiData<Envelope<SearchResults>>('/search', {

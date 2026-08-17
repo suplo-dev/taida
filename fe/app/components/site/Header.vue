@@ -5,6 +5,7 @@ const { t, locale } = useI18n()
 const localePath = useLocalePath()
 const api = useApi()
 const route = useRoute()
+const router = useRouter()
 
 const { data: chrome } = await useSiteData()
 
@@ -26,11 +27,29 @@ const { data: catalogues } = await useAsyncData(
 const openPanel = ref<'services' | 'industries' | null>(null)
 const mobileOpen = ref(false)
 
+/**
+ * Shared with the search page's own field, so on /tim-kiem the two boxes hold
+ * the same term and editing either one moves both.
+ */
+const term = useSearchTerm()
+
 // Any navigation closes whatever was open.
 watch(() => route.fullPath, () => {
   openPanel.value = null
   mobileOpen.value = false
 })
+
+/**
+ * Same destination the search page's own form pushes to, addressed by route
+ * name rather than as a URL: that keeps the /en prefix in the English edition
+ * and keeps this a client-side navigation instead of a full page load.
+ */
+function submitSearch() {
+  const q = term.value.trim()
+  if (!q) return
+
+  router.push(localePath({ name: 'tim-kiem', query: { q } }))
+}
 
 const header = useTemplateRef<HTMLElement>('header')
 onClickOutside(header, () => (openPanel.value = null))
@@ -38,13 +57,20 @@ onClickOutside(header, () => (openPanel.value = null))
 
 <template>
   <header ref="header" class="sticky top-0 z-50 bg-primary-600 text-white">
-    <div class="mx-auto flex h-16 max-w-7xl items-center gap-8 px-4 sm:px-6 lg:px-8">
+    <!--
+      The bar carries the logo lockup, which is ~53 px on its own, so a 64 px
+      row left it looking wedged in. 96 px on desktop puts about a fifth of the
+      height as clear space above and below it — the proportion corporate bars
+      of this kind hold — while staying short enough to keep sticking to the
+      top without eating the viewport.
+    -->
+    <div class="mx-auto flex h-20 max-w-7xl items-center gap-8 px-4 sm:px-6 lg:h-24 lg:px-8">
       <SiteLogo :logo="chrome?.settings.logo" />
 
       <nav class="hidden flex-1 items-stretch gap-1 md:flex">
         <button
           type="button"
-          class="flex items-center gap-1 border-b-2 px-3 text-sm font-medium transition"
+          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-sm font-semibold transition lg:px-4 lg:text-base xl:px-5"
           :class="openPanel === 'industries' ? 'border-accent-500 text-white' : 'border-transparent text-primary-100 hover:text-white'"
           @click="openPanel = openPanel === 'industries' ? null : 'industries'"
         >
@@ -54,7 +80,7 @@ onClickOutside(header, () => (openPanel.value = null))
 
         <button
           type="button"
-          class="flex items-center gap-1 border-b-2 px-3 text-sm font-medium transition"
+          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-sm font-semibold transition lg:px-4 lg:text-base xl:px-5"
           :class="openPanel === 'services' ? 'border-accent-500 text-white' : 'border-transparent text-primary-100 hover:text-white'"
           @click="openPanel = openPanel === 'services' ? null : 'services'"
         >
@@ -66,7 +92,7 @@ onClickOutside(header, () => (openPanel.value = null))
           v-for="link in chrome?.header.slice(2) ?? []"
           :key="link.id"
           :to="link.url ?? '/'"
-          class="flex items-center border-b-2 border-transparent px-3 text-sm font-medium text-primary-100 transition hover:text-white"
+          class="flex items-center whitespace-nowrap border-b-2 border-transparent px-3 text-sm font-semibold text-primary-100 transition hover:text-white lg:px-4 lg:text-base xl:px-5"
           active-class="border-accent-500 text-white"
         >
           {{ link.label }}
@@ -77,14 +103,49 @@ onClickOutside(header, () => (openPanel.value = null))
         <a
           v-if="chrome?.settings.hotline"
           :href="`tel:${chrome.settings.hotline.replace(/\s/g, '')}`"
-          class="hidden items-center gap-1.5 text-sm text-primary-100 hover:text-white lg:flex"
+          class="hidden items-center gap-2 text-base font-semibold text-primary-100 hover:text-white lg:flex"
         >
-          <UIcon name="i-lucide-phone" class="size-4" />
+          <UIcon name="i-lucide-phone" class="size-5" />
           {{ chrome.settings.hotline }}
         </a>
 
-        <NuxtLink :to="localePath('tim-kiem')" class="text-primary-100 hover:text-white" :aria-label="t('nav.search')">
-          <UIcon name="i-lucide-search" class="size-5" />
+        <!--
+          A real field rather than a link to the search page: the term is the
+          thing visitors arrive with, and typing it here saves them a page.
+          Submitting — by the icon or by Enter — pushes /tim-kiem?q=<term>,
+          which is where the search page reads its query from.
+
+          It only unfolds from xl. Below that the nav, the hotline and the
+          burger already fill the bar, and a ~240 px field pushed the nav onto
+          a second line; the icon link keeps the same destination one tap away.
+        -->
+        <form
+          role="search"
+          class="hidden items-center rounded-full bg-white pl-4 pr-1 ring-1 ring-transparent transition focus-within:ring-accent-500 xl:flex"
+          @submit.prevent="submitSearch"
+        >
+          <input
+            v-model="term"
+            type="search"
+            :placeholder="t('search.headerPlaceholder')"
+            :aria-label="t('nav.search')"
+            class="w-48 appearance-none bg-transparent py-2.5 text-base font-medium text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-500"
+          >
+          <button
+            type="submit"
+            class="rounded-full p-2 text-neutral-500 transition hover:text-primary-600"
+            :aria-label="t('nav.search')"
+          >
+            <UIcon name="i-lucide-search" class="size-5" />
+          </button>
+        </form>
+
+        <NuxtLink
+          :to="localePath('tim-kiem')"
+          class="text-primary-100 hover:text-white xl:hidden"
+          :aria-label="t('nav.search')"
+        >
+          <UIcon name="i-lucide-search" class="size-6" />
         </NuxtLink>
 
         <!--
@@ -174,12 +235,12 @@ onClickOutside(header, () => (openPanel.value = null))
           { key: 'industries', label: t('nav.industries'), to: 'nganh-nghe', items: catalogues?.industries ?? [] },
           { key: 'services', label: t('nav.services'), to: 'dich-vu', items: catalogues?.services ?? [] },
         ])" :key="group.key" class="border-b border-primary-800 pb-2">
-          <summary class="cursor-pointer py-2 text-sm font-medium text-white">{{ group.label }}</summary>
+          <summary class="cursor-pointer py-2.5 text-base font-semibold text-white">{{ group.label }}</summary>
           <ul class="space-y-1 pb-2 pl-3">
             <li v-for="item in group.items" :key="item.id">
               <NuxtLink
                 :to="localePath({ name: group.to === 'dich-vu' ? 'dich-vu-slug' : 'nganh-nghe-slug', params: { slug: item.slug } })"
-                class="block py-1.5 text-sm text-primary-100"
+                class="block py-2 text-base text-primary-100"
               >
                 {{ item.name }}
               </NuxtLink>
@@ -191,7 +252,7 @@ onClickOutside(header, () => (openPanel.value = null))
           v-for="link in chrome?.header.slice(2) ?? []"
           :key="link.id"
           :to="link.url ?? '/'"
-          class="block py-2.5 text-sm font-medium text-primary-100"
+          class="block py-3 text-base font-semibold text-primary-100"
         >
           {{ link.label }}
         </NuxtLink>

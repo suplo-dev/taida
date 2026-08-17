@@ -43,12 +43,13 @@
   },
   "search": {
     "placeholder": "Nhập từ khoá…",
+    "headerPlaceholder": "Tìm kiếm...",
     "resultsFor": "Kết quả cho",
     "empty": "Không tìm thấy kết quả nào.",
     "hint": "Nhập ít nhất 2 ký tự để tìm kiếm."
   },
   "utility": {
-    "edition": "TAIDA Việt Nam",
+    "edition": "Taida Việt Nam",
     "global": "Toàn Cầu",
     "vietnam": "Việt Nam",
     "globalSite": "Trang toàn cầu"

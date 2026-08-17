@@ -18,7 +18,7 @@ const socialIcons: Record<string, string> = {
     <div class="mx-auto max-w-7xl px-4 py-14 sm:px-6 lg:px-8">
       <div class="grid gap-10 md:grid-cols-4">
         <div class="md:col-span-2">
-          <SiteLogo :logo="chrome?.settings.logo" :size="32" class="text-white" />
+          <SiteLogo :logo="chrome?.settings.logo" class="text-white" />
           <p v-if="chrome?.settings.address" class="mt-4 max-w-sm text-sm leading-relaxed">
             {{ chrome.settings.address }}
           </p>

@@ -1,0 +1,1 @@
+import{ct as e,ui as t}from"./0qlU9qKK.js";import{t as n}from"./B2ZLK_J0.js";function r(){let r=e(),i=n(`site:search-term`,()=>r.query.q??``);return t(()=>r.fullPath,()=>{i.value=r.query.q??``}),i}export{r as t};

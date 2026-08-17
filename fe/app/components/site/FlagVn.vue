@@ -8,12 +8,22 @@ withDefaults(defineProps<{ title?: string }>(), { title: 'Việt Nam' })
 </script>
 
 <template>
-  <svg viewBox="0 0 30 20" class="h-3.5 w-5 shrink-0 rounded-[1px]" role="img">
+  <!--
+    3:2, the flag's own proportion, in both the viewBox and the rendered box —
+    a 20×14 box against a 30×20 drawing stretched it a few percent wide.
+  -->
+  <svg viewBox="0 0 30 20" class="h-4 w-6 shrink-0 rounded-[1px]" role="img">
     <title>{{ title }}</title>
     <rect width="30" height="20" fill="#da251d" />
-    <path
+    <!--
+      Centred on (15,10) — the middle of the field — with a circumradius of 6,
+      i.e. a fifth of the flag's length, which is the standard construction.
+      The previous star was both oversized and centred ~1.8 units low, so it
+      sat visibly below the middle.
+    -->
+    <polygon
       fill="#ff0"
-      d="m15 4 1.76 5.42h5.7l-4.61 3.34 1.76 5.42L15 14.84l-4.61 3.34 1.76-5.42-4.61-3.34h5.7z"
+      points="15,4 16.347,8.146 20.706,8.146 17.18,10.708 18.527,14.854 15,12.292 11.473,14.854 12.82,10.708 9.294,8.146 13.653,8.146"
     />
   </svg>
 </template>
