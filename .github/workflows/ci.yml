@@ -111,8 +111,8 @@ jobs:
       - name: Generate the static site
         working-directory: fe
         env:
-          NUXT_API_BASE: http://127.0.0.1:8000
-          NUXT_SITE_URL: https://www.taida.vn
+          NUXT_PUBLIC_API_BASE: http://127.0.0.1:8000
+          NUXT_PUBLIC_SITE_URL: https://www.taida.vn
         run: pnpm generate
 
       - name: Check the output

@@ -43,8 +43,8 @@ jobs:
       - name: Generate
         working-directory: fe
         env:
-          NUXT_API_BASE: ${{ vars.NUXT_API_BASE }}
-          NUXT_SITE_URL: ${{ vars.NUXT_SITE_URL }}
+          NUXT_PUBLIC_API_BASE: ${{ vars.NUXT_PUBLIC_API_BASE }}
+          NUXT_PUBLIC_SITE_URL: ${{ vars.NUXT_PUBLIC_SITE_URL }}
         run: |
           pnpm install --frozen-lockfile
           pnpm generate
@@ -90,7 +90,7 @@ jobs:
       - name: Smoke test
         run: |
           set -e
-          site="${{ vars.NUXT_SITE_URL }}"
+          site="${{ vars.NUXT_PUBLIC_SITE_URL }}"
           curl -fsS -o /dev/null "$site/"
           curl -fsS -o /dev/null "$site/en/"
           curl -fsS -o /dev/null "$site/sitemap.xml"

@@ -49,16 +49,16 @@ export default defineNuxtConfig({
      * shipped dev content and image URLs pointing at localhost, and reported
      * success.
      */
-    apiBase: process.env.NUXT_API_BASE || 'http://localhost:8000',
+    apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000',
     public: {
       // Browser-side base URL — must be reachable from the client.
-      apiBase: process.env.NUXT_API_BASE || 'http://localhost:8000',
-      siteUrl: process.env.NUXT_SITE_URL || 'http://localhost:3000',
+      apiBase: process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000',
+      siteUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     },
   },
 
   site: {
-    url: process.env.NUXT_SITE_URL || 'http://localhost:3000',
+    url: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     name: 'Taida',
   },
 
@@ -105,7 +105,7 @@ export default defineNuxtConfig({
      */
     // `host`, not `hostname`: the check compares against `new URL(src).host`,
     // so leaving the port off silently matches nothing in development.
-    domains: [new URL(process.env.NUXT_API_BASE || 'http://localhost:8000').host],
+    domains: [new URL(process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000').host],
   },
 
   icon: {
@@ -226,7 +226,7 @@ export default defineNuxtConfig({
 
   i18n: {
     // Required for absolute hreflang / canonical links.
-    baseUrl: process.env.NUXT_SITE_URL || 'http://localhost:3000',
+    baseUrl: process.env.NUXT_PUBLIC_SITE_URL || 'http://localhost:3000',
     defaultLocale: 'vi',
     strategy: 'prefix_except_default',
     locales: [

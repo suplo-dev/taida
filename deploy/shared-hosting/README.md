@@ -127,7 +127,7 @@ bình thường, admin vẫn thấy ảnh, nhưng site sinh ra sẽ nhúng
 `http://localhost/storage/...` vào từng trang — logo và ảnh bài viết mất sạch với
 người dùng thật, và không có lỗi nào báo.
 
-Nó cũng phải **trùng khít** với `NUXT_API_BASE` bên frontend. Lệch nhau
+Nó cũng phải **trùng khít** với `NUXT_PUBLIC_API_BASE` bên frontend. Lệch nhau
 thì `@nuxt/image` không nhận ra domain, bỏ qua tối ưu và trả ảnh gốc nguyên kích
 thước — site vẫn hiển thị đúng nên rất dễ bỏ sót.
 
@@ -176,8 +176,8 @@ Settings → Environments → **production** (không phải mục secrets chung 
 | Secret | `DEPLOY_FTP_USER` | tên tài khoản FTP trong cPanel |
 | Secret | `DEPLOY_FTP_PASSWORD` | mật khẩu tài khoản đó |
 | Variable | `DEPLOY_SITE_PATH` | đường dẫn **theo góc nhìn của FTP**, không có `/` ở cuối |
-| Variable | `NUXT_SITE_URL` | `https://www.taida.vn` |
-| Variable | `NUXT_API_BASE` | `https://api.taida.vn` |
+| Variable | `NUXT_PUBLIC_SITE_URL` | `https://www.taida.vn` |
+| Variable | `NUXT_PUBLIC_API_BASE` | `https://api.taida.vn` |
 
 `DEPLOY_SITE_PATH` là chỗ dễ sai nhất: nó là đường dẫn mà **FTP** nhìn thấy, chứ
 không phải đường dẫn tuyệt đối trên đĩa. Tài khoản FTP chính của cPanel thường
@@ -275,7 +275,7 @@ thay đổi không bị bỏ quên. Lỗi ghi vào `storage/logs/laravel.log`.
 | Trình duyệt báo CORS | `FRONTEND_URLS` thiếu domain đang mở |
 | Ảnh upload 404 | chưa chạy `php artisan storage:link` |
 | Site thật hiện ảnh vỡ, xem mã nguồn thấy `localhost` | `APP_URL` trong `.env` của API chưa sửa thành tên miền thật |
-| Ảnh tải chậm, không thấy `/_ipx/` trong mã nguồn | `APP_URL` và `NUXT_API_BASE` không trùng nhau |
+| Ảnh tải chậm, không thấy `/_ipx/` trong mã nguồn | `APP_URL` và `NUXT_PUBLIC_API_BASE` không trùng nhau |
 | Build ra nội dung cũ / nội dung dev | `.env.production` trỏ sai API, hoặc API production không truy cập được |
 | Sửa nội dung không lên site sau vài phút | thiếu cron `schedule:run`, hoặc `PUBLISH_ENABLED=false`, hoặc token sai — chạy `php artisan site:publish` để nó nói lý do |
 | `pnpm generate` báo 404 giữa chừng | API không truy cập được, hoặc có bản ghi thiếu bản dịch |
