@@ -12,7 +12,7 @@ defineProps<{ title: string, subtitle?: string, to?: string, linkLabel?: string 
     <NuxtLink
       v-if="to"
       :to="to"
-      class="inline-flex shrink-0 items-center gap-1 border-b-2 border-accent-500 pb-0.5 text-sm font-medium text-primary-700 transition hover:text-primary-600"
+      class="inline-flex shrink-0 items-center gap-1 border-b-2 border-accent-500 pb-0.5 text-sm font-medium text-primary-700 transition hover:text-accent-700"
     >
       {{ linkLabel ?? $t('common.viewAll') }}
       <UIcon name="i-lucide-arrow-right" class="size-4" />

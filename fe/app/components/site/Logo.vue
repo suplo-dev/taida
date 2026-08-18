@@ -6,7 +6,7 @@ const props = withDefaults(defineProps<{
   logo?: Media | null
   /** Rendered height of the mark in pixels; the width follows the aspect ratio. */
   size?: number
-}>(), { logo: null, size: 28 })
+}>(), { logo: null, size: 36 })
 
 const localePath = useLocalePath()
 
@@ -22,73 +22,86 @@ const width = computed(() => {
 
   return w && h ? Math.round((w / h) * props.size) : props.size
 })
+
+/**
+ * The wordmark is set so its capitals stand exactly as tall as the mark beside
+ * it, which is what makes the pair read as one lockup rather than a logo with
+ * a label. Inter's cap height is 0.727 em, so the type size is the mark's
+ * height divided by that — derived rather than hard-coded so re-sizing the
+ * mark carries the wordmark with it.
+ */
+const wordmarkSize = computed(() => Math.round(props.size / 0.727))
 </script>
 
 <template>
   <!--
     The wordmark names the link, so the mark itself is decorative (alt="").
 
-    Two columns, two rows: the mark and TAIDA sit side by side on the first
-    row, centred against each other; the slogan spans both columns underneath,
-    so it starts at the left edge of the mark and runs on under the wordmark.
-    `inline-grid` keeps the block only as wide as its widest row, which is what
-    lets the header lay it out against the nav without a wrapper.
+    A column of two rows: the mark and TAIDA side by side on the first, the
+    slogan underneath spanning the whole block. `inline-flex` keeps the block
+    only as wide as its widest row, which is what lets the header lay it out
+    against the nav without a wrapper.
 
         [ LOGO ] TAIDA
-        your partner for business excellence
+        Your  Partner  for  Business  Excellence
   -->
   <NuxtLink
     :to="localePath('index')"
-    class="inline-grid grid-cols-[auto_1fr] items-center gap-x-2.5"
+    class="inline-flex flex-col items-start"
   >
-    <!--
-      The mark sits on a white plate. Logos are drawn for paper, so they
-      usually arrive as an opaque light-background file — dropping one
-      straight onto the navy bar leaves a pale rectangle floating there. The
-      plate makes that background look deliberate, and it works whatever
-      shape the client uploads later.
-    -->
-    <span
-      class="flex shrink-0 items-center justify-center rounded-md bg-white p-1"
-      :style="{ height: `${size + 8}px` }"
-    >
+    <span class="flex items-center gap-2.5">
       <!--
-        Served through @nuxt/image whether it is the bundled file or an upload:
-        both come back as a WebP at twice the rendered size, from this origin.
-        Handing the browser the original instead means a second connection to
-        the API and a file an order of magnitude too big for a 32 px slot.
+        The mark sits on a white plate. Logos are drawn for paper, so they
+        usually arrive as an opaque light-background file — dropping one
+        straight onto a coloured bar leaves a pale rectangle floating there.
+        The plate makes that background look deliberate, and it works whatever
+        shape the client uploads later.
       -->
-      <NuxtImg
-        :src="src"
-        alt=""
-        format="webp"
-        :width="width * 2"
-        :height="size * 2"
-        :style="{ height: `${size}px`, width: 'auto' }"
-        class="max-w-32 object-contain"
-      />
+      <span
+        class="flex shrink-0 items-center justify-center rounded-md bg-white p-1.5 ring-1 ring-primary-950/5"
+        :style="{ height: `${size + 12}px` }"
+      >
+        <!--
+          Served through @nuxt/image whether it is the bundled file or an
+          upload: both come back as a WebP at twice the rendered size, from
+          this origin. Handing the browser the original instead means a second
+          connection to the API and a file an order of magnitude too big.
+        -->
+        <NuxtImg
+          :src="src"
+          alt=""
+          format="webp"
+          :width="width * 2"
+          :height="size * 2"
+          :style="{ height: `${size}px`, width: 'auto' }"
+          class="max-w-40 object-contain"
+        />
+      </span>
+
+      <!--
+        Wordmark and slogan are brand copy, not interface copy: they read the
+        same in both locales, so they stay here rather than in the message
+        files. Both inherit their colour from whatever bar they sit on.
+      -->
+      <span
+        class="font-bold leading-none tracking-tight"
+        :style="{ fontSize: `${wordmarkSize}px` }"
+      >TAIDA</span>
     </span>
 
     <!--
-      Wordmark and slogan are brand copy, not interface copy: they read the
-      same in both locales, so they stay here rather than in the message files.
-    -->
-    <!--
-      Sized against the mark, not against the nav: at 20 px the plate stood a
-      little under three times the cap height of the wordmark and read as the
-      logo with a caption beside it. At 24 px the two carry about equal weight,
-      which is what makes them read as one lockup.
-    -->
-    <span class="text-2xl font-bold leading-none tracking-tight">TAIDA</span>
+      `text-align-last: justify` sets the slogan to the exact width of the
+      mark-plus-wordmark row above it: the row is the wider of the two, so the
+      slogan's word spaces open up to fill the difference and the two rows end
+      on the same vertical line. Left ragged, the block looked like it was
+      leaning off the right edge of the lockup.
 
-    <!--
-      The slogan is what sets the width of the whole block, and at ~190 px it
-      would push the search, locale and menu buttons off a narrow phone —
-      hence it only appears once there is room for it. Hiding it collapses the
-      row, leaving the mark and wordmark side by side.
+      It only appears from sm: at ~200 px it would push the search, locale and
+      menu buttons off a narrow phone. Hiding it collapses the row, leaving the
+      mark and wordmark side by side.
     -->
     <span
-      class="col-span-2 mt-1.5 hidden text-[10px] font-medium leading-none tracking-wide text-primary-200 sm:block"
+      class="mt-2 hidden w-full text-[11px] font-medium leading-none opacity-70 [text-align-last:justify] sm:block"
     >
       Your Partner for Business Excellence
     </span>

@@ -56,22 +56,35 @@ onClickOutside(header, () => (openPanel.value = null))
 </script>
 
 <template>
-  <header ref="header" class="sticky top-0 z-50 bg-primary-600 text-white">
+  <!--
+    Ivory rather than the navy it used to be. The navy is still the brand's
+    structural colour — it carries the hero, the CTA band and the footer — but
+    running it across the top as well left the whole first screen as one solid
+    block. Light furniture over dark content reads calmer, and it lets the
+    brass underline do the work of showing which section you are in.
+  -->
+  <header ref="header" class="sticky top-0 z-50 border-b border-primary-950/10 bg-cream-100 text-primary-700">
     <!--
-      The bar carries the logo lockup, which is ~53 px on its own, so a 64 px
-      row left it looking wedged in. 96 px on desktop puts about a fifth of the
-      height as clear space above and below it — the proportion corporate bars
-      of this kind hold — while staying short enough to keep sticking to the
-      top without eating the viewport.
+      The bar carries the logo lockup, which is ~67 px on its own, so a 64 px
+      row left it looking wedged in. 112 px on desktop puts about a fifth of
+      the height as clear space above and below it — the proportion corporate
+      bars of this kind hold — while staying short enough to keep sticking to
+      the top without eating the viewport.
     -->
-    <div class="mx-auto flex h-20 max-w-7xl items-center gap-8 px-4 sm:px-6 lg:h-24 lg:px-8">
+    <div class="mx-auto flex h-20 max-w-8xl items-center gap-4 px-4 sm:px-6 lg:h-28 lg:gap-8 lg:px-8 xl:px-12">
       <SiteLogo :logo="chrome?.settings.logo" />
 
-      <nav class="hidden flex-1 items-stretch gap-1 md:flex">
+      <!--
+        Pushed to the right rather than sitting against the logo: the lockup
+        now runs to ~200 px and the nav starting right beside it made the left
+        half of the bar dense and the right half empty. Ranged right, the nav
+        and the contact controls read as one group.
+      -->
+      <nav class="ml-auto hidden items-stretch gap-1 md:flex">
         <button
           type="button"
-          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-sm font-semibold transition lg:px-4 lg:text-base xl:px-5"
-          :class="openPanel === 'industries' ? 'border-accent-500 text-white' : 'border-transparent text-primary-100 hover:text-white'"
+          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-base font-semibold transition lg:px-4 lg:text-lg xl:px-5"
+          :class="openPanel === 'industries' ? 'border-accent-500 text-primary-950' : 'border-transparent text-primary-500 hover:text-accent-700'"
           @click="openPanel = openPanel === 'industries' ? null : 'industries'"
         >
           {{ t('nav.industries') }}
@@ -80,30 +93,39 @@ onClickOutside(header, () => (openPanel.value = null))
 
         <button
           type="button"
-          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-3 text-sm font-semibold transition lg:px-4 lg:text-base xl:px-5"
-          :class="openPanel === 'services' ? 'border-accent-500 text-white' : 'border-transparent text-primary-100 hover:text-white'"
+          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-base font-semibold transition lg:px-4 lg:text-lg xl:px-5"
+          :class="openPanel === 'services' ? 'border-accent-500 text-primary-950' : 'border-transparent text-primary-500 hover:text-accent-700'"
           @click="openPanel = openPanel === 'services' ? null : 'services'"
         >
           {{ t('nav.services') }}
           <UIcon name="i-lucide-chevron-down" class="size-3.5" />
         </button>
 
+        <!--
+          `border-accent-500!` rather than plain `border-accent-500`: the
+          resting state needs `border-transparent` so the item always reserves
+          the underline's 2 px, and the two utilities have equal specificity —
+          whichever Tailwind emits last wins, regardless of which one the
+          router adds. The important modifier is what makes the active state
+          actually paint. The mega-menu buttons above sidestep this by binding
+          one class list or the other, never both.
+        -->
         <NuxtLink
           v-for="link in chrome?.header.slice(2) ?? []"
           :key="link.id"
           :to="link.url ?? '/'"
-          class="flex items-center whitespace-nowrap border-b-2 border-transparent px-3 text-sm font-semibold text-primary-100 transition hover:text-white lg:px-4 lg:text-base xl:px-5"
-          active-class="border-accent-500 text-white"
+          class="flex items-center whitespace-nowrap border-b-2 border-transparent px-2.5 text-base font-semibold text-primary-500 transition hover:text-accent-700 lg:px-4 lg:text-lg xl:px-5"
+          active-class="border-accent-500! text-primary-950"
         >
           {{ link.label }}
         </NuxtLink>
       </nav>
 
-      <div class="ml-auto flex items-center gap-4">
+      <div class="flex items-center gap-4">
         <a
           v-if="chrome?.settings.hotline"
           :href="`tel:${chrome.settings.hotline.replace(/\s/g, '')}`"
-          class="hidden items-center gap-2 text-base font-semibold text-primary-100 hover:text-white lg:flex"
+          class="hidden items-center gap-2 text-base font-semibold text-primary-600 transition hover:text-accent-700 lg:flex"
         >
           <UIcon name="i-lucide-phone" class="size-5" />
           {{ chrome.settings.hotline }}
@@ -121,7 +143,7 @@ onClickOutside(header, () => (openPanel.value = null))
         -->
         <form
           role="search"
-          class="hidden items-center rounded-full bg-white pl-4 pr-1 ring-1 ring-transparent transition focus-within:ring-accent-500 xl:flex"
+          class="hidden items-center rounded-full bg-white pl-4 pr-1 ring-1 ring-primary-950/15 transition focus-within:ring-accent-500 xl:flex"
           @submit.prevent="submitSearch"
         >
           <input
@@ -129,11 +151,11 @@ onClickOutside(header, () => (openPanel.value = null))
             type="search"
             :placeholder="t('search.headerPlaceholder')"
             :aria-label="t('nav.search')"
-            class="w-48 appearance-none bg-transparent py-2.5 text-base font-medium text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-500"
+            class="w-40 2xl:w-56 appearance-none bg-transparent py-2.5 text-base font-medium text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-500"
           >
           <button
             type="submit"
-            class="rounded-full p-2 text-neutral-500 transition hover:text-primary-600"
+            class="rounded-full p-2 text-neutral-500 transition hover:text-accent-700"
             :aria-label="t('nav.search')"
           >
             <UIcon name="i-lucide-search" class="size-5" />
@@ -142,7 +164,7 @@ onClickOutside(header, () => (openPanel.value = null))
 
         <NuxtLink
           :to="localePath('tim-kiem')"
-          class="text-primary-100 hover:text-white xl:hidden"
+          class="text-primary-600 transition hover:text-accent-700 xl:hidden"
           :aria-label="t('nav.search')"
         >
           <UIcon name="i-lucide-search" class="size-6" />
@@ -162,19 +184,19 @@ onClickOutside(header, () => (openPanel.value = null))
           <SwitchLocalePathLink
             locale="vi"
             class="px-1"
-            :class="locale === 'vi' ? 'text-white underline underline-offset-4' : 'text-primary-100 hover:text-white'"
+            :class="locale === 'vi' ? 'text-primary-950 underline underline-offset-4' : 'text-primary-500 hover:text-accent-700'"
           >VI</SwitchLocalePathLink>
-          <span class="text-primary-400">|</span>
+          <span class="text-primary-300">|</span>
           <SwitchLocalePathLink
             locale="en"
             class="px-1"
-            :class="locale === 'en' ? 'text-white underline underline-offset-4' : 'text-primary-100 hover:text-white'"
+            :class="locale === 'en' ? 'text-primary-950 underline underline-offset-4' : 'text-primary-500 hover:text-accent-700'"
           >EN</SwitchLocalePathLink>
         </div>
 
         <button
           type="button"
-          class="text-primary-100 hover:text-white md:hidden"
+          class="text-primary-600 transition hover:text-accent-700 md:hidden"
           :aria-label="t('nav.menu')"
           @click="mobileOpen = !mobileOpen"
         >
@@ -191,14 +213,14 @@ onClickOutside(header, () => (openPanel.value = null))
       leave-to-class="-translate-y-1 opacity-0"
     >
       <div v-if="openPanel" class="absolute inset-x-0 hidden border-t-2 border-accent-500 bg-white shadow-xl md:block">
-        <div class="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <div class="mx-auto max-w-8xl px-4 py-8 sm:px-6 lg:px-8 xl:px-12">
           <div class="mb-5 flex items-baseline justify-between">
-            <h2 class="text-lg font-semibold text-primary-600">
+            <h2 class="text-lg font-semibold text-primary-900">
               {{ openPanel === 'services' ? t('nav.services') : t('nav.industries') }}
             </h2>
             <NuxtLink
               :to="localePath(openPanel === 'services' ? 'dich-vu' : 'nganh-nghe')"
-              class="text-sm font-medium text-primary-600 hover:text-primary-800"
+              class="text-sm font-medium text-primary-700 transition hover:text-accent-700"
             >
               {{ t('common.viewAll') }} →
             </NuxtLink>
@@ -208,7 +230,7 @@ onClickOutside(header, () => (openPanel.value = null))
             <div v-for="item in (openPanel === 'services' ? catalogues?.services : catalogues?.industries) ?? []" :key="item.id">
               <NuxtLink
                 :to="localePath({ name: openPanel === 'services' ? 'dich-vu-slug' : 'nganh-nghe-slug', params: { slug: item.slug } })"
-                class="font-medium text-primary-600 hover:text-primary-600"
+                class="font-medium text-primary-700 transition hover:text-accent-700"
               >
                 {{ item.name }}
               </NuxtLink>
@@ -216,7 +238,7 @@ onClickOutside(header, () => (openPanel.value = null))
                 <li v-for="child in item.children" :key="child.id">
                   <NuxtLink
                     :to="localePath({ name: openPanel === 'services' ? 'dich-vu-slug' : 'nganh-nghe-slug', params: { slug: child.slug } })"
-                    class="text-sm text-neutral-600 hover:text-primary-600"
+                    class="text-sm text-neutral-600 transition hover:text-accent-700"
                   >
                     {{ child.name }}
                   </NuxtLink>
@@ -229,18 +251,18 @@ onClickOutside(header, () => (openPanel.value = null))
     </Transition>
 
     <!-- Mobile accordion -->
-    <div v-if="mobileOpen" class="border-t border-primary-800 bg-primary-600 md:hidden">
+    <div v-if="mobileOpen" class="border-t border-primary-950/10 bg-cream-100 md:hidden">
       <nav class="space-y-1 px-4 py-4">
         <details v-for="group in ([
           { key: 'industries', label: t('nav.industries'), to: 'nganh-nghe', items: catalogues?.industries ?? [] },
           { key: 'services', label: t('nav.services'), to: 'dich-vu', items: catalogues?.services ?? [] },
-        ])" :key="group.key" class="border-b border-primary-800 pb-2">
-          <summary class="cursor-pointer py-2.5 text-base font-semibold text-white">{{ group.label }}</summary>
+        ])" :key="group.key" class="border-b border-primary-950/10 pb-2">
+          <summary class="cursor-pointer py-2.5 text-base font-semibold text-primary-900">{{ group.label }}</summary>
           <ul class="space-y-1 pb-2 pl-3">
             <li v-for="item in group.items" :key="item.id">
               <NuxtLink
                 :to="localePath({ name: group.to === 'dich-vu' ? 'dich-vu-slug' : 'nganh-nghe-slug', params: { slug: item.slug } })"
-                class="block py-2 text-base text-primary-100"
+                class="block py-2 text-base text-primary-600"
               >
                 {{ item.name }}
               </NuxtLink>
@@ -252,20 +274,20 @@ onClickOutside(header, () => (openPanel.value = null))
           v-for="link in chrome?.header.slice(2) ?? []"
           :key="link.id"
           :to="link.url ?? '/'"
-          class="block py-3 text-base font-semibold text-primary-100"
+          class="block py-3 text-base font-semibold text-primary-700"
         >
           {{ link.label }}
         </NuxtLink>
 
         <!-- The utility bar is hidden at this width, so its links live here instead. -->
-        <div v-if="chrome?.utility.length" class="mt-2 border-t border-primary-800 pt-2">
+        <div v-if="chrome?.utility.length" class="mt-2 border-t border-primary-950/10 pt-2">
           <NuxtLink
             v-for="link in chrome.utility"
             :key="link.id"
             :to="link.url ?? '/'"
             :target="link.opensInNewTab ? '_blank' : undefined"
             :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
-            class="block py-2 text-xs text-primary-300"
+            class="block py-2 text-xs text-primary-500"
           >
             {{ link.label }}
           </NuxtLink>

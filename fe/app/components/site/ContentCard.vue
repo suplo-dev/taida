@@ -52,7 +52,7 @@ const gradient = computed(() => {
 
       <p v-if="meta" class="mb-1.5 text-xs font-medium uppercase tracking-wide text-primary-500">{{ meta }}</p>
 
-      <h3 class="font-semibold text-primary-600 transition group-hover:text-primary-600">
+      <h3 class="font-semibold text-primary-700 transition group-hover:text-accent-700">
         {{ title }}
       </h3>
 

@@ -16,7 +16,7 @@ useSeo(() => ({
   <div>
     <SitePageHero :title="t('nav.industries')" :subtitle="t('home.industriesSubtitle')" />
 
-    <div class="mx-auto max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+    <div class="mx-auto max-w-8xl px-4 py-12 sm:px-6 lg:px-8 xl:px-12">
       <SiteBreadcrumb
         :items="[
           { label: t('common.home'), to: localePath('index') },

@@ -43,7 +43,7 @@ useSeo(() => ({
         <div class="absolute -right-24 top-1/2 size-[32rem] -translate-y-1/2 rounded-full bg-accent-500 blur-3xl" />
       </div>
 
-      <div class="relative mx-auto max-w-7xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32">
+      <div class="relative mx-auto max-w-8xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32 xl:px-12">
         <h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
           {{ hero.title }}
         </h1>
@@ -54,7 +54,7 @@ useSeo(() => ({
         <div class="mt-10 flex flex-wrap items-center gap-4">
           <NuxtLink
             :to="localePath('dich-vu')"
-            class="inline-flex items-center gap-2 rounded bg-accent-500 px-6 py-3 font-medium text-white transition hover:bg-accent-600"
+            class="inline-flex items-center gap-2 rounded bg-accent-500 px-6 py-3 font-semibold text-primary-950 transition hover:bg-accent-400"
           >
             {{ t('home.exploreServices') }}
             <UIcon name="i-lucide-arrow-right" class="size-5" />
@@ -73,7 +73,7 @@ useSeo(() => ({
     </section>
 
     <!-- 2. Featured solutions -->
-    <section v-if="featured.length" class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <section v-if="featured.length" class="mx-auto max-w-8xl px-4 py-16 sm:px-6 lg:px-8 xl:px-12">
       <div class="grid gap-6 md:grid-cols-2">
         <NuxtLink
           v-for="service in featured"
@@ -93,8 +93,8 @@ useSeo(() => ({
     </section>
 
     <!-- 3. Industries -->
-    <section class="bg-neutral-50 py-16">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section class="bg-cream-50 py-16">
+      <div class="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <SiteSectionHeading
           :title="t('home.industriesTitle')"
           :subtitle="t('home.industriesSubtitle')"
@@ -116,7 +116,7 @@ useSeo(() => ({
     </section>
 
     <!-- 4. Service pillars -->
-    <section class="mx-auto max-w-7xl px-4 py-16 sm:px-6 lg:px-8">
+    <section class="mx-auto max-w-8xl px-4 py-16 sm:px-6 lg:px-8 xl:px-12">
       <SiteSectionHeading
         :title="t('home.servicesTitle')"
         :subtitle="t('home.servicesSubtitle')"
@@ -136,8 +136,8 @@ useSeo(() => ({
     </section>
 
     <!-- 5. News -->
-    <section v-if="home?.posts.length" class="bg-neutral-50 py-16">
-      <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+    <section v-if="home?.posts.length" class="bg-cream-50 py-16">
+      <div class="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <SiteSectionHeading :title="t('home.newsTitle')" :to="localePath('tin-tuc')" />
 
         <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">

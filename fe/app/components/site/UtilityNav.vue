@@ -36,15 +36,15 @@ watch(() => route.fullPath, () => (open.value = false))
     over the header — was drawn underneath it. The bar has to outrank the
     header for its own dropdown to be visible.
   -->
-  <div class="relative z-60 hidden bg-white text-black md:block">
+  <div class="relative z-60 hidden bg-cream-200 text-primary-700 md:block">
     <!--
       Set in the body size rather than the usual 12 px — these are the links
-      customers actually ask for, and as fine print they get skipped over — but
-      kept to a compact 40 px band. The breathing room belongs to the header
-      below; a utility strip that competes with it for height just pushes the
-      page down.
+      customers actually ask for, and as fine print they get skipped over. At
+      40 px the row was tight enough that the links looked crammed against the
+      header seam; 56 px gives them roughly a line's worth of air above and
+      below without the strip starting to compete with the header for height.
     -->
-    <div class="mx-auto flex h-10 max-w-7xl items-center px-4 text-sm sm:px-6 lg:px-8">
+    <div class="mx-auto flex h-14 max-w-8xl items-center px-4 text-sm sm:px-6 lg:px-8 xl:px-12">
       <!--
         Dropped between md and lg: at 14 px the links plus the region picker
         already need the full width there, and this label is the part a visitor
@@ -62,16 +62,16 @@ watch(() => route.fullPath, () => (open.value = false))
           :to="link.url ?? '/'"
           :target="link.opensInNewTab ? '_blank' : undefined"
           :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
-          class="border-l border-b-gray-500 px-4 font-semibold transition hover:text-primary-600 first:border-l-0 lg:px-5"
+          class="border-l border-primary-950/15 px-4 font-semibold transition hover:text-accent-700 first:border-l-0 lg:px-5"
         >
           {{ link.label }}
         </NuxtLink>
       </nav>
 
-      <div ref="wrapper" class="relative border-l border-b-gray-500 pl-4 lg:pl-5">
+      <div ref="wrapper" class="relative border-l border-primary-950/15 pl-4 lg:pl-5">
         <button
           type="button"
-          class="flex items-center gap-1.5 font-semibold transition hover:text-primary-600"
+          class="flex items-center gap-1.5 font-semibold transition hover:text-accent-700"
           :aria-expanded="open"
           @click="open = !open"
         >
@@ -99,7 +99,7 @@ watch(() => route.fullPath, () => (open.value = false))
               v-for="row in regions"
               :key="row.locale"
               :locale="row.locale"
-              class="flex items-center gap-3 px-4 py-2 transition hover:bg-primary-800"
+              class="flex items-center gap-3 px-4 py-2 transition hover:bg-primary-700"
               :class="locale === row.locale ? 'text-white' : 'text-primary-200'"
             >
               <SiteFlagVn v-if="row.locale === 'vi'" :title="t('utility.vietnam')" />

@@ -2,33 +2,55 @@
 @import '@nuxt/ui';
 
 /*
- * Brand palette — deep navy for structure (header, footer, hero overlay),
- * bright blue for action (CTA, links, focus rings).
+ * Brand palette — an ivory header over a deep-navy page furniture, with
+ * antique brass for emphasis.
+ *
+ * `primary` is one navy ramp used two ways: 600–950 are surfaces (hero,
+ * footer, CTA band) and heading/link ink on the ivory header, while 100–400
+ * are the tints that sit legibly on top of those surfaces. `cream` is the
+ * header and utility bar. `accent` is brass — it underlines the active nav
+ * item and carries the calls to action, and being a mid-value colour it takes
+ * dark text rather than white.
  */
 @theme static {
-  --color-primary-50: #eef6ff;
-  --color-primary-100: #d9ebff;
-  --color-primary-200: #bcdcff;
-  --color-primary-300: #8ec7ff;
-  --color-primary-400: #59a8fb;
-  --color-primary-500: #0072ce;
-  --color-primary-600: #0060b4;
-  --color-primary-700: #0a4f9c;
-  --color-primary-800: #0d417d;
-  --color-primary-900: #003a70;
-  --color-primary-950: #002348;
+  --color-primary-50: #f3f6fa;
+  --color-primary-100: #e2e9f2;
+  --color-primary-200: #c2d0e3;
+  --color-primary-300: #94a9c6;
+  --color-primary-400: #6480a6;
+  --color-primary-500: #3d5a83;
+  --color-primary-600: #1b2a41;
+  --color-primary-700: #16223a;
+  --color-primary-800: #111a29;
+  --color-primary-900: #0c131e;
+  --color-primary-950: #060a12;
 
-  --color-accent-50: #eafaff;
-  --color-accent-100: #cdf2ff;
-  --color-accent-200: #a3e8ff;
-  --color-accent-300: #6ddaff;
-  --color-accent-400: #33c4f5;
-  --color-accent-500: #00a3e0;
-  --color-accent-600: #0083bb;
-  --color-accent-700: #056a97;
-  --color-accent-800: #0b587b;
-  --color-accent-900: #0e4968;
-  --color-accent-950: #062e44;
+  --color-accent-50: #fdfaef;
+  --color-accent-100: #faf1d2;
+  --color-accent-200: #f3e0a0;
+  --color-accent-300: #e9ca6a;
+  --color-accent-400: #dbb242;
+  --color-accent-500: #c9a227;
+  --color-accent-600: #a8801d;
+  --color-accent-700: #855f1a;
+  --color-accent-800: #6b4c1c;
+  --color-accent-900: #5a401b;
+  --color-accent-950: #34230b;
+
+  --color-cream-50: #fdfbf7;
+  --color-cream-100: #faf7f0;
+  --color-cream-200: #f7f3ea;
+  --color-cream-300: #efe8da;
+  --color-cream-400: #e2d7c1;
+  --color-cream-500: #cfc0a2;
+
+  /*
+   * One step past Tailwind's 7xl (80rem). The page furniture is laid out
+   * against this rather than the built-in scale: at 80rem a 1700 px display
+   * left ~220 px of empty margin either side, which read as a narrow column
+   * floating in the middle of the screen.
+   */
+  --container-8xl: 100rem;
 
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 }
