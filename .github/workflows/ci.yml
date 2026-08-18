@@ -1,10 +1,11 @@
 name: CI
 
 on:
-  push:
-    branches: [main]
   pull_request:
-  # Lets deploy.yml gate on the same suite instead of duplicating it.
+  # Lets deploy.yml gate on the same suite instead of duplicating it. There is
+  # deliberately no `push: main` trigger: deploy.yml already runs on that push
+  # and calls this workflow, and both runs land in the same concurrency group,
+  # so the standalone one was cancelled within two seconds every single time.
   workflow_call:
 
 concurrency:
