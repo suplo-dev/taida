@@ -213,6 +213,12 @@ export default defineNuxtConfig({
     // og:image points at /_og/… — a URL that only a Node server can answer, so
     // on static hosting every share card 404s. Setting it makes the images be
     // rendered to .png files during the build instead.
+    //
+    // The module still copies its renderer fonts to `_og-static-fonts/` — 22
+    // files, 2.1 MB, 17% of the whole build — even though with zeroRuntime
+    // nothing ever reads them: they are input for rendering the .png files,
+    // not output. `pnpm generate` deletes that directory afterwards; JSON
+    // takes no comments, so the reason lives here.
     zeroRuntime: true,
 
     defaults: { component: 'OgTemplate', width: 1200, height: 630 },

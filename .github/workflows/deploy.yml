@@ -52,40 +52,57 @@ jobs:
       # FTP chứ không phải rsync/SSH: shared hosting ở đây không mở SSH, nên
       # đây là kênh ghi file duy nhất có sẵn.
       #
-      # `protocol: ftps` là FTP over explicit TLS trên cổng 21 — cùng cổng, cùng
+      # `lftp --parallel` thay cho SamKirkland/FTP-Deploy-Action vì action đó
+      # đẩy tuần tự từng file một: đo trên run 32118528331 là 829 file, trung
+      # vị 1.35s/file gần như không đổi theo kích thước — 9.41 MB mất 24 phút,
+      # tức 6.6 KB/s. Nút thắt là round-trip FTP mỗi file, không phải băng
+      # thông, nên thứ duy nhất chữa được là mở nhiều kết nối song song.
+      #
+      # Không cần đồng bộ incremental nữa: mỗi lần build Nuxt sinh `buildId`
+      # mới và `prerenderedAt` mới, nên 514/831 file đổi nội dung ngay cả khi
+      # nội dung site không đổi. Đẩy song song toàn bộ vừa đơn giản hơn vừa
+      # nhanh hơn incremental tuần tự, và bỏ luôn được
+      # `.ftp-deploy-sync-state.json` — file liệt kê mọi đường dẫn của site,
+      # nằm ngay trong document root.
+      #
+      # `ftp:ssl-force` là FTP over explicit TLS trên cổng 21 — cùng cổng, cùng
       # tài khoản như FTP thường, chỉ khác là mật khẩu và nội dung được mã hoá.
-      # Hạ xuống `ftp` là gửi mật khẩu hosting dạng chữ thường qua internet ở
-      # mỗi lần chạy; chỉ làm vậy nếu nhà cung cấp thật sự không hỗ trợ TLS.
+      # `ssl:verify-certificate no` vì chứng chỉ FTP do hosting cấp thường là
+      # self-signed, khác chứng chỉ HTTPS của tên miền.
       #
-      # Action giữ một file `.ftp-deploy-sync-state.json` trên hosting để so
-      # sánh: lần sau chỉ đẩy file đã đổi và xoá file đã biến mất khỏi bản build
-      # — đó là thứ thay cho `rsync --delete`. Lần chạy đầu chưa có file này
-      # nên nó upload tất cả và không xoá gì.
+      # Mật khẩu đi qua biến LFTP_PASSWORD chứ không nằm trên dòng lệnh, nên
+      # không lộ trong `ps` và không vỡ nếu có ký tự đặc biệt.
       #
-      # Dấu `/` cuối `local-dir` là bắt buộc: copy nội dung bên trong thư mục,
-      # không phải cả thư mục. Dotfile được đẩy cùng, nên `.htaccess` không bị
-      # bỏ quên như khi kéo tay bằng FileZilla.
+      # `net:max-retries` là bắt buộc chứ không phải cho đẹp: mặc định lftp
+      # retry vô hạn, sai host hoặc sai mật khẩu là job treo tới giới hạn 6
+      # tiếng. `timeout-minutes` là lưới an toàn thứ hai.
+      #
+      # `--delete` dọn file build cũ. Hai thư mục loại trừ là do hosting quản,
+      # không do build sinh ra — xoá `.well-known/` là mất gia hạn SSL.
+      #
+      # Dấu `/` cuối đường dẫn nguồn là bắt buộc: copy nội dung bên trong thư
+      # mục, không phải cả thư mục. lftp đẩy dotfile mặc định, nên `.htaccess`
+      # không bị bỏ quên như khi kéo tay bằng FileZilla.
       - name: Upload
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          protocol: ftps
-          server: ${{ secrets.DEPLOY_FTP_HOST }}
-          username: ${{ secrets.DEPLOY_FTP_USER }}
-          password: ${{ secrets.DEPLOY_FTP_PASSWORD }}
-          local-dir: fe/.output/public/
-          server-dir: ${{ vars.DEPLOY_SITE_PATH }}/
-          # Chứng chỉ do hosting cấp cho FTP thường là self-signed, khác với
-          # chứng chỉ HTTPS của tên miền. Bắt buộc hợp lệ thì hầu hết shared
-          # hosting sẽ trượt ngay ở bước bắt tay.
-          security: loose
-          # Do hosting quản, không phải do build sinh ra — dọn đi là mất xác
-          # thực SSL và thư mục hệ thống của cPanel.
-          exclude: |
-            **/.git*
-            **/.git*/**
-            **/node_modules/**
-            .well-known/**
-            cgi-bin/**
+        timeout-minutes: 15
+        env:
+          FTP_HOST: ${{ secrets.DEPLOY_FTP_HOST }}
+          FTP_USER: ${{ secrets.DEPLOY_FTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.DEPLOY_FTP_PASSWORD }}
+          DEST: ${{ vars.DEPLOY_SITE_PATH }}
+        run: |
+          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          lftp <<LFTP
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
+          set net:max-retries 3
+          set net:timeout 15
+          set cmd:fail-exit true
+          open --env-password -u "$FTP_USER" "$FTP_HOST"
+          mirror --reverse --delete --parallel=5 --verbose --exclude '^\.well-known/' --exclude '^cgi-bin/' fe/.output/public/ "$DEST/"
+          bye
+          LFTP
 
       - name: Smoke test
         run: |

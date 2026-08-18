@@ -5,7 +5,7 @@
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
-    "generate": "nuxt generate --dotenv .env.production",
+    "generate": "nuxt generate --dotenv .env.production && rm -rf .output/public/_og-static-fonts",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
   },
