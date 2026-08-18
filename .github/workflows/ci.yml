@@ -124,14 +124,18 @@ jobs:
           # Pre-compressed variants are what static hosting serves. Missing them
           # costs about six times the transfer size, and nothing else notices.
           test -f .output/public/index.html.br
-          # The domain points at `fe/`, so this file is what serves the site at
-          # all: it forwards requests into the build and keeps the source out of
-          # reach. A build without it is not deployable.
-          test -f .htaccess
-          # Exactly one .htaccess under fe/. A second one inside the output would
-          # override the rules above for that directory instead of adding to
-          # them, which is how the source directory ended up publicly readable.
-          test "$(find . -name .htaccess -not -path './node_modules/*' | wc -l)" -eq 1
+          # Deploy uploads the contents of `.output/public/` into the document
+          # root, so the Apache config reaches hosting only if generate copied it
+          # out of `fe/public/`. Without it there is no SPA fallback and no
+          # compression, which is exactly what deploy.yml's smoke test trips on.
+          # (`fe/.htaccess` is a note for whoever sets the document root, not
+          # config — it never serves anything.)
+          test -f .output/public/.htaccess
+          cmp public/.htaccess .output/public/.htaccess
+          # Exactly one inside the build. A second one in a subdirectory would
+          # override the rules above for that subtree instead of adding to them,
+          # which is how the source directory ended up publicly readable.
+          test "$(find .output/public -name .htaccess | wc -l)" -eq 1
           pages=$(find .output/public -name index.html | wc -l)
           echo "Generated $pages pages"
           test "$pages" -gt 40

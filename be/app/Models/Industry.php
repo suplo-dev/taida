@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\ContentStatus;
 use App\Models\Concerns\HasTranslations;
 use App\Models\Concerns\Publishable;
+use Database\Factories\IndustryFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Industry extends Model
 {
-    /** @use HasFactory<\Database\Factories\IndustryFactory> */
+    /** @use HasFactory<IndustryFactory> */
     use HasFactory, HasTranslations, Publishable;
 
     /** @var list<string> */

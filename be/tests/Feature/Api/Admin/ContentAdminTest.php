@@ -95,7 +95,7 @@ class ContentAdminTest extends TestCase
             ])
             ->assertCreated();
 
-        $media = \App\Models\Media::query()->sole();
+        $media = Media::query()->sole();
 
         Storage::disk('public')->assertExists($media->path);
         Storage::disk('public')->assertExists($media->thumb_path);
@@ -125,7 +125,7 @@ class ContentAdminTest extends TestCase
             ->postJson('/api/v1/admin/media', ['file' => UploadedFile::fake()->image('hero.jpg')])
             ->assertCreated();
 
-        $media = \App\Models\Media::query()->sole();
+        $media = Media::query()->sole();
 
         $this->actingAs($this->admin)
             ->deleteJson("/api/v1/admin/media/{$media->id}")
