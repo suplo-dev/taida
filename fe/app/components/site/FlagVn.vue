@@ -10,9 +10,11 @@ withDefaults(defineProps<{ title?: string }>(), { title: 'Việt Nam' })
 <template>
   <!--
     3:2, the flag's own proportion, in both the viewBox and the rendered box —
-    a 20×14 box against a 30×20 drawing stretched it a few percent wide.
+    a 20×14 box against a 30×20 drawing stretched it a few percent wide. 30×20
+    rather than the 24×16 it started at: beside 14 px type the smaller mark was
+    reading as an icon instead of as a flag, and the star lost its points.
   -->
-  <svg viewBox="0 0 30 20" class="h-4 w-6 shrink-0 rounded-[1px]" role="img">
+  <svg viewBox="0 0 30 20" class="h-5 w-[1.875rem] shrink-0 rounded-[1px]" role="img">
     <title>{{ title }}</title>
     <rect width="30" height="20" fill="#da251d" />
     <!--

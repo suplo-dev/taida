@@ -13,7 +13,7 @@ defineProps<{ title: string, body?: string, hotline?: string }>()
       <a
         v-if="hotline"
         :href="`tel:${hotline.replace(/\s/g, '')}`"
-        class="inline-flex shrink-0 items-center gap-2 rounded bg-accent-500 px-6 py-3 font-semibold text-primary-950 transition hover:bg-accent-400"
+        class="inline-flex shrink-0 items-center gap-2 rounded bg-brand-600 px-6 py-3 font-semibold text-white transition hover:bg-brand-500"
       >
         <UIcon name="i-lucide-phone" class="size-5" />
         {{ hotline }}

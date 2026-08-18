@@ -38,23 +38,23 @@ useSeo(() => ({
 <template>
   <div>
     <!-- 1. Hero -->
-    <section class="relative isolate overflow-hidden bg-gradient-to-br from-primary-600 via-primary-600 to-primary-700">
-      <div class="absolute inset-0 opacity-20" aria-hidden="true">
-        <div class="absolute -right-24 top-1/2 size-[32rem] -translate-y-1/2 rounded-full bg-accent-500 blur-3xl" />
+    <section class="relative isolate overflow-hidden bg-gradient-to-br from-cream-100 via-cream-200 to-cream-300">
+      <div class="absolute inset-0 opacity-25" aria-hidden="true">
+        <div class="absolute -right-24 top-1/2 size-[32rem] -translate-y-1/2 rounded-full bg-brand-300 blur-3xl" />
       </div>
 
       <div class="relative mx-auto max-w-8xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32 xl:px-12">
-        <h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-white sm:text-5xl lg:text-6xl">
+        <h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-primary-900 sm:text-5xl lg:text-6xl">
           {{ hero.title }}
         </h1>
-        <p v-if="hero.subtitle" class="mt-6 max-w-2xl text-lg leading-relaxed text-primary-100">
+        <p v-if="hero.subtitle" class="mt-6 max-w-2xl text-lg leading-relaxed text-primary-500">
           {{ hero.subtitle }}
         </p>
 
         <div class="mt-10 flex flex-wrap items-center gap-4">
           <NuxtLink
             :to="localePath('dich-vu')"
-            class="inline-flex items-center gap-2 rounded bg-accent-500 px-6 py-3 font-semibold text-primary-950 transition hover:bg-accent-400"
+            class="inline-flex items-center gap-2 rounded bg-brand-600 px-6 py-3 font-semibold text-white transition hover:bg-brand-700"
           >
             {{ t('home.exploreServices') }}
             <UIcon name="i-lucide-arrow-right" class="size-5" />
@@ -63,7 +63,7 @@ useSeo(() => ({
           <a
             v-if="chrome?.settings.hotline"
             :href="`tel:${chrome.settings.hotline.replace(/\s/g, '')}`"
-            class="inline-flex items-center gap-2 rounded border border-primary-400 px-6 py-3 font-medium text-white transition hover:bg-primary-800"
+            class="inline-flex items-center gap-2 rounded border border-primary-300 px-6 py-3 font-medium text-primary-800 transition hover:border-primary-600 hover:bg-primary-600 hover:text-white"
           >
             <UIcon name="i-lucide-phone" class="size-5" />
             {{ chrome.settings.hotline }}

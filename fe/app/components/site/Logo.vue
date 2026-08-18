@@ -101,7 +101,7 @@ const wordmarkSize = computed(() => Math.round(props.size / 0.727))
       mark and wordmark side by side.
     -->
     <span
-      class="mt-2 hidden w-full text-[11px] font-medium leading-none opacity-70 [text-align-last:justify] sm:block"
+      class="mt-2 hidden w-full text-[11px] font-medium leading-none opacity-80 [text-align-last:justify] sm:block"
     >
       Your Partner for Business Excellence
     </span>

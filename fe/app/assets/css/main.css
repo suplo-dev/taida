@@ -2,15 +2,20 @@
 @import '@nuxt/ui';
 
 /*
- * Brand palette — an ivory header over a deep-navy page furniture, with
- * antique brass for emphasis.
+ * Brand palette.
  *
- * `primary` is one navy ramp used two ways: 600–950 are surfaces (hero,
- * footer, CTA band) and heading/link ink on the ivory header, while 100–400
- * are the tints that sit legibly on top of those surfaces. `cream` is the
- * header and utility bar. `accent` is brass — it underlines the active nav
- * item and carries the calls to action, and being a mid-value colour it takes
- * dark text rather than white.
+ * `brand` is the logo's own blue — 500 is `#018dd5`, read straight off the
+ * mark — and it carries the header bar and every solid call to action. The
+ * bar uses 600 rather than 500: white type on the mark's blue lands at 3.6:1,
+ * under the 4.5:1 the nav needs, and one step deeper is still unmistakably
+ * the same colour at 4.8:1.
+ *
+ * `primary` is a navy ramp used two ways: 600–950 are dark surfaces (footer,
+ * CTA band) and heading/body ink on the light ones, while 100–400 are the
+ * tints that sit legibly on top of the dark ones. `cream` is the utility bar
+ * and the hero. `accent` is antique brass, kept for fine detail — the active
+ * nav underline, the footer's contact icons, section rules — rather than for
+ * fills, where it would compete with the blue.
  */
 @theme static {
   --color-primary-50: #f3f6fa;
@@ -24,6 +29,18 @@
   --color-primary-800: #111a29;
   --color-primary-900: #0c131e;
   --color-primary-950: #060a12;
+
+  --color-brand-50: #eef8fe;
+  --color-brand-100: #d6eefc;
+  --color-brand-200: #b0e0fa;
+  --color-brand-300: #78ccf6;
+  --color-brand-400: #35b2ee;
+  --color-brand-500: #018dd5;
+  --color-brand-600: #0077bd;
+  --color-brand-700: #0a6099;
+  --color-brand-800: #10507d;
+  --color-brand-900: #124467;
+  --color-brand-950: #0c2b44;
 
   --color-accent-50: #fdfaef;
   --color-accent-100: #faf1d2;
@@ -57,7 +74,7 @@
 
 @theme {
   /* Nuxt UI semantic aliases. */
-  --ui-primary: var(--color-primary-500);
+  --ui-primary: var(--color-brand-600);
   --ui-secondary: var(--color-accent-500);
 }
 

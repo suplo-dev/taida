@@ -36,7 +36,7 @@ watch(() => route.fullPath, () => (open.value = false))
     over the header — was drawn underneath it. The bar has to outrank the
     header for its own dropdown to be visible.
   -->
-  <div class="relative z-60 hidden bg-cream-200 text-primary-700 md:block">
+  <div class="relative z-60 hidden bg-white text-primary-700 md:block">
     <!--
       Set in the body size rather than the usual 12 px — these are the links
       customers actually ask for, and as fine print they get skipped over. At
@@ -62,7 +62,7 @@ watch(() => route.fullPath, () => (open.value = false))
           :to="link.url ?? '/'"
           :target="link.opensInNewTab ? '_blank' : undefined"
           :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
-          class="border-l border-primary-950/15 px-4 font-semibold transition hover:text-accent-700 first:border-l-0 lg:px-5"
+          class="border-l border-primary-950/15 px-4 font-semibold transition hover:text-brand-600 first:border-l-0 lg:px-5"
         >
           {{ link.label }}
         </NuxtLink>
@@ -71,7 +71,7 @@ watch(() => route.fullPath, () => (open.value = false))
       <div ref="wrapper" class="relative border-l border-primary-950/15 pl-4 lg:pl-5">
         <button
           type="button"
-          class="flex items-center gap-1.5 font-semibold transition hover:text-accent-700"
+          class="flex items-center gap-1.5 font-semibold transition hover:text-brand-600"
           :aria-expanded="open"
           @click="open = !open"
         >
@@ -88,7 +88,7 @@ watch(() => route.fullPath, () => (open.value = false))
         >
           <div
             v-if="open"
-            class="absolute right-0 top-full z-50 w-60 border-t-2 border-accent-500 bg-primary-600 py-2 shadow-xl"
+            class="absolute right-0 top-full z-50 w-60 border-t-2 border-accent-400 bg-brand-600 py-2 shadow-xl"
           >
             <!--
               SwitchLocalePathLink for the same reason as the header switcher:
@@ -99,15 +99,15 @@ watch(() => route.fullPath, () => (open.value = false))
               v-for="row in regions"
               :key="row.locale"
               :locale="row.locale"
-              class="flex items-center gap-3 px-4 py-2 transition hover:bg-primary-700"
-              :class="locale === row.locale ? 'text-white' : 'text-primary-200'"
+              class="flex items-center gap-3 px-4 py-2 transition hover:bg-brand-700"
+              :class="locale === row.locale ? 'text-white' : 'text-brand-100'"
             >
               <SiteFlagVn v-if="row.locale === 'vi'" :title="t('utility.vietnam')" />
-              <UIcon v-else name="i-lucide-globe" class="size-5 text-primary-300" />
+              <UIcon v-else name="i-lucide-globe" class="size-5 text-brand-200" />
 
               <span class="flex flex-col leading-tight">
                 <span class="font-medium">{{ t(row.region) }}</span>
-                <span class="text-[11px] text-primary-300">{{ row.lang }}</span>
+                <span class="text-[11px] text-brand-200">{{ row.lang }}</span>
               </span>
             </SwitchLocalePathLink>
           </div>

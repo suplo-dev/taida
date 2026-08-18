@@ -21,7 +21,7 @@ const isNotFound = computed(() => props.error.statusCode === 404)
 
     <button
       type="button"
-      class="mt-8 rounded bg-accent-500 px-6 py-3 font-semibold text-primary-950 transition hover:bg-accent-400"
+      class="mt-8 rounded bg-brand-600 px-6 py-3 font-semibold text-white transition hover:bg-brand-500"
       @click="clearError({ redirect: '/' })"
     >
       {{ t('common.backToHome') }}
