@@ -4,6 +4,25 @@
 Options -Indexes -MultiViews
 DirectoryIndex index.html
 
+# Nothing whose name starts with a dot is meant to be fetched by URL. The
+# generated site has no such file, but the FTP deploy leaves its sync manifest
+# (`.ftp-deploy-sync-state.json`) in the document root, and that manifest lists
+# every path on the site. Apache serves dotfiles by default, so this has to be
+# said out loud.
+#
+# Directories are unaffected — FilesMatch tests the basename, so ACME's
+# `.well-known/acme-challenge/<token>` still resolves and SSL renewal keeps
+# working.
+<FilesMatch "^\.">
+    <IfModule mod_authz_core.c>
+        Require all denied
+    </IfModule>
+    <IfModule !mod_authz_core.c>
+        Order allow,deny
+        Deny from all
+    </IfModule>
+</FilesMatch>
+
 <IfModule mod_rewrite.c>
     RewriteEngine On
     RewriteBase /

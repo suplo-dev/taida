@@ -7,7 +7,8 @@ on:
   push:
     branches: [main]
 
-# Hai lần publish chồng nhau sẽ ghi đè lẫn nhau giữa chừng khi rsync.
+# Hai lần publish chồng nhau sẽ ghi đè lẫn nhau giữa chừng khi upload, và
+# tranh nhau ghi file trạng thái đồng bộ trên hosting.
 concurrency:
   group: publish-production
   cancel-in-progress: false
@@ -48,23 +49,43 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm generate
 
-      - name: Configure SSH
-        run: |
-          install -m 700 -d ~/.ssh
-          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
-          # Khoá host được ghim sẵn; thiếu nó thì lần kết nối đầu chấp nhận bất
-          # kỳ ai trả lời, coi như dùng SSH mà không được gì.
-          echo "${{ secrets.DEPLOY_KNOWN_HOSTS }}" > ~/.ssh/known_hosts
-
-      # `--delete` để trang đã xoá trong CMS biến mất khỏi hosting thay vì nằm
-      # lại vĩnh viễn. Dấu `/` cuối nguồn là bắt buộc: copy nội dung bên trong,
-      # không phải cả thư mục.
+      # FTP chứ không phải rsync/SSH: shared hosting ở đây không mở SSH, nên
+      # đây là kênh ghi file duy nhất có sẵn.
+      #
+      # `protocol: ftps` là FTP over explicit TLS trên cổng 21 — cùng cổng, cùng
+      # tài khoản như FTP thường, chỉ khác là mật khẩu và nội dung được mã hoá.
+      # Hạ xuống `ftp` là gửi mật khẩu hosting dạng chữ thường qua internet ở
+      # mỗi lần chạy; chỉ làm vậy nếu nhà cung cấp thật sự không hỗ trợ TLS.
+      #
+      # Action giữ một file `.ftp-deploy-sync-state.json` trên hosting để so
+      # sánh: lần sau chỉ đẩy file đã đổi và xoá file đã biến mất khỏi bản build
+      # — đó là thứ thay cho `rsync --delete`. Lần chạy đầu chưa có file này
+      # nên nó upload tất cả và không xoá gì.
+      #
+      # Dấu `/` cuối `local-dir` là bắt buộc: copy nội dung bên trong thư mục,
+      # không phải cả thư mục. Dotfile được đẩy cùng, nên `.htaccess` không bị
+      # bỏ quên như khi kéo tay bằng FileZilla.
       - name: Upload
-        run: |
-          rsync -az --delete \
-            fe/.output/public/ \
-            "${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}:${{ vars.DEPLOY_SITE_PATH }}/"
+        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
+        with:
+          protocol: ftps
+          server: ${{ secrets.DEPLOY_FTP_HOST }}
+          username: ${{ secrets.DEPLOY_FTP_USER }}
+          password: ${{ secrets.DEPLOY_FTP_PASSWORD }}
+          local-dir: fe/.output/public/
+          server-dir: ${{ vars.DEPLOY_SITE_PATH }}/
+          # Chứng chỉ do hosting cấp cho FTP thường là self-signed, khác với
+          # chứng chỉ HTTPS của tên miền. Bắt buộc hợp lệ thì hầu hết shared
+          # hosting sẽ trượt ngay ở bước bắt tay.
+          security: loose
+          # Do hosting quản, không phải do build sinh ra — dọn đi là mất xác
+          # thực SSL và thư mục hệ thống của cPanel.
+          exclude: |
+            **/.git*
+            **/.git*/**
+            **/node_modules/**
+            .well-known/**
+            cgi-bin/**
 
       - name: Smoke test
         run: |

@@ -136,8 +136,11 @@ thước — site vẫn hiển thị đúng nên rất dễ bỏ sót.
 Copy **toàn bộ nội dung bên trong** `fe/.output/public/` vào `public_html/`
 (nội dung bên trong, không phải cả thư mục).
 
+Có SSH thì một lệnh là xong; không có thì upload bằng FTP (mục 6 tự động hoá
+đúng việc này):
+
 ```bash
-rsync -az --delete fe/.output/public/ hcouhftghosting_suplo@crownsoftware.site:~/domains/taida/fe/
+rsync -az --delete fe/.output/public/ user@host:~/domains/taida/fe/
 ```
 
 Dùng FTP thì nhớ bật hiển thị file ẩn — **`.htaccess` là file ẩn**, thiếu nó thì
@@ -163,26 +166,51 @@ Cách nhanh nhất: vào tab **Actions** trên GitHub, chọn workflow **Publish
 rồi bấm *Run workflow*. Nó chạy test, build lại từ API thật, upload, và kiểm tra
 lại site sau khi lên. Biên tập viên tự bấm được, không cần lập trình viên.
 
-Cần khai báo trước trên GitHub:
+Workflow upload bằng **FTPS**, không phải SSH — shared hosting thường không mở
+SSH, còn FTP thì gói nào cũng có. Cần khai báo trước trên GitHub, trong
+Settings → Environments → **production** (không phải mục secrets chung của repo):
 
 | Loại | Tên | Ví dụ |
 |---|---|---|
-| Secret | `DEPLOY_HOST` / `DEPLOY_USER` / `DEPLOY_SSH_KEY` | tài khoản SSH của hosting |
-| Secret | `DEPLOY_KNOWN_HOSTS` | kết quả `ssh-keyscan <host>` |
-| Variable | `DEPLOY_SITE_PATH` | `/home/taida/public_html` |
+| Secret | `DEPLOY_FTP_HOST` | `ftp.taida.vn` hoặc IP máy chủ |
+| Secret | `DEPLOY_FTP_USER` | tên tài khoản FTP trong cPanel |
+| Secret | `DEPLOY_FTP_PASSWORD` | mật khẩu tài khoản đó |
+| Variable | `DEPLOY_SITE_PATH` | đường dẫn **theo góc nhìn của FTP**, không có `/` ở cuối |
 | Variable | `NUXT_SITE_URL` | `https://www.taida.vn` |
 | Variable | `NUXT_API_BASE` | `https://api.taida.vn` |
 
-Làm tay thì vẫn là hai lệnh:
+`DEPLOY_SITE_PATH` là chỗ dễ sai nhất: nó là đường dẫn mà **FTP** nhìn thấy, chứ
+không phải đường dẫn tuyệt đối trên đĩa. Tài khoản FTP chính của cPanel thường
+vào thẳng thư mục home, nên giá trị là `/public_html`. Tài khoản FTP phụ lại
+thường bị khoá vào đúng một thư mục, khi đó lại là `/`. Cách chắc chắn nhất: mở
+FileZilla, đăng nhập bằng đúng tài khoản đó, và chép lại đường dẫn hiện trên
+thanh "Remote site" khi đang đứng ở thư mục chứa `index.html`.
+
+Tạo tài khoản FTP riêng cho việc deploy (cPanel → FTP Accounts), khoá vào đúng
+thư mục site và đặt mật khẩu riêng — mật khẩu này nằm trong GitHub, không nên là
+mật khẩu đăng nhập cPanel.
+
+**Lần chạy đầu chậm.** Action đẩy toàn bộ ~9 MB qua FTP, mà `compressPublicAssets`
+sinh thêm bản `.gz` và `.br` cho mỗi asset nên số file gấp ba — mất vài phút là
+bình thường. Từ lần thứ hai nó đọc `.ftp-deploy-sync-state.json` để lại trên
+hosting và chỉ đẩy phần đã đổi, thường dưới một phút.
+
+File trạng thái đó cũng là thứ thay cho `rsync --delete`: trang bị xoá trong CMS
+sẽ biến mất khỏi hosting ở lần build kế tiếp. Nếu nó bị xoá hoặc lệch (ví dụ có
+người upload tay đè lên), chạy lại workflow một lần với `dangerous-clean-slate:
+true` để dọn sạch thư mục rồi đẩy lại từ đầu — nhớ bỏ ra ngay sau đó, vì nó xoá
+**mọi** thứ trong `DEPLOY_SITE_PATH` trước khi upload.
+
+Làm tay thì vẫn là:
 
 ```bash
 cd fe
 pnpm generate
-rsync -az --delete .output/public/ user@host:~/public_html/
+# rồi upload toàn bộ nội dung trong .output/public/ vào public_html bằng FTP
 ```
 
-Hosting không cho SSH thì bỏ bước rsync và upload `fe/.output/public/` bằng FTP
-— nhớ bật hiển thị file ẩn để `.htaccess` đi cùng.
+Nhớ bật hiển thị file ẩn trong FileZilla để `.htaccess` đi cùng — workflow thì
+tự đẩy dotfile nên không dính lỗi này.
 
 ## 7. Tự sinh lại site sau khi biên tập
 

@@ -13,12 +13,13 @@ withDefaults(defineProps<{ title?: string, description?: string, siteName?: stri
   <!--
     The font family has to be named explicitly. Left unset, the renderer uses
     its own bundled default, which stops at Latin-1 — every ư ơ đ ệ ợ in a
-    Vietnamese headline came out as a "no glyph" box. Inter is registered by
-    @nuxt/fonts with the vietnamese subset, so naming it here is enough.
+    Vietnamese headline came out as a "no glyph" box. Be Vietnam Pro is
+    registered by @nuxt/fonts with the vietnamese subset, so naming it here is
+    enough; it also keeps the share card in the same face as the page.
   -->
   <div
     class="flex h-full w-full flex-col justify-between bg-[#003a70] p-20"
-    style="font-family: Inter"
+    style="font-family: Be Vietnam Pro"
   >
     <div class="flex text-4xl font-bold text-white">{{ siteName }}</div>
 

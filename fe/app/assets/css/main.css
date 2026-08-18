@@ -69,7 +69,22 @@
    */
   --container-8xl: 100rem;
 
-  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  /*
+   * Be Vietnam Pro, downloaded and self-hosted by @nuxt/fonts — see the
+   * `fonts` block in nuxt.config.ts for the subsets it is held to.
+   *
+   * Picked over the brand's own NeoSansPro, which cannot set this site: that
+   * family carries 2 of the 90 codepoints in U+1EA0–U+1EF9 and neither ơ nor
+   * ư, so every one of "Ngành nghề", "Tin tức", "Về chúng tôi" and "Trách
+   * nhiệm" would have broken mid-word into the fallback. Be Vietnam Pro is
+   * geometric and squared in the same way, so the flavour survives, and its
+   * tone marks are drawn rather than derived — which shows on the stacked
+   * ones (ế ệ ộ ợ) that make up most of a Vietnamese page.
+   *
+   * Arial stays behind it as the brand's own second choice, and covers the
+   * moment before the download lands.
+   */
+  --font-sans: 'Be Vietnam Pro', Arial, ui-sans-serif, system-ui, sans-serif;
 }
 
 @theme {

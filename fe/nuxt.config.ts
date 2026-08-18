@@ -189,10 +189,13 @@ export default defineNuxtConfig({
   },
 
   fonts: {
-    // Nuxt UI pulls in Inter, and by default @nuxt/fonts emits every subset
-    // Google publishes — 61 @font-face rules in the render-blocking stylesheet
-    // and, worse, a 86 KB latin-ext file downloaded on every Vietnamese page
-    // purely because its unicode-range overlaps the vietnamese one.
+    // The site is set in Be Vietnam Pro (see `--font-sans` in main.css); the
+    // module finds it on Google Fonts and self-hosts it from /_fonts.
+    //
+    // By default it emits every subset Google publishes — 61 @font-face rules
+    // in the render-blocking stylesheet and, worse, an 86 KB latin-ext file
+    // downloaded on every Vietnamese page purely because its unicode-range
+    // overlaps the vietnamese one.
     //
     // Dropping latin-ext means the handful of characters that live only there
     // (ā, ř, ş …) fall back to the system sans. Neither Vietnamese nor English
