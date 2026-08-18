@@ -23,14 +23,19 @@ const width = computed(() => {
   return w && h ? Math.round((w / h) * props.size) : props.size
 })
 
+/** Outside edge of the white plate: the mark plus its padding. */
+const plateSize = computed(() => props.size + 8)
+
 /**
- * The wordmark is set so its capitals stand exactly as tall as the mark beside
- * it, which is what makes the pair read as one lockup rather than a logo with
- * a label. Inter's cap height is 0.727 em, so the type size is the mark's
- * height divided by that — derived rather than hard-coded so re-sizing the
- * mark carries the wordmark with it.
+ * The wordmark is set so its capitals stand exactly as tall as the plate beside
+ * it, which is what makes the pair read as one lockup rather than a logo with a
+ * label. Measured against the plate rather than the mark inside it — the plate
+ * is the edge the eye actually reads as the logo's height, so matching the mark
+ * left the wordmark visibly short. Inter's cap height is 0.727 em, so the type
+ * size is that height divided by 0.727 — derived rather than hard-coded, so
+ * re-sizing the mark carries the wordmark with it.
  */
-const wordmarkSize = computed(() => Math.round(props.size / 0.727))
+const wordmarkSize = computed(() => Math.round(plateSize.value / 0.727))
 </script>
 
 <template>
@@ -58,8 +63,8 @@ const wordmarkSize = computed(() => Math.round(props.size / 0.727))
         shape the client uploads later.
       -->
       <span
-        class="flex shrink-0 items-center justify-center rounded-md bg-white p-1.5 ring-1 ring-primary-950/5"
-        :style="{ height: `${size + 12}px` }"
+        class="flex shrink-0 items-center justify-center rounded-md bg-white p-1 ring-1 ring-primary-950/5"
+        :style="{ height: `${plateSize}px` }"
       >
         <!--
           Served through @nuxt/image whether it is the bundled file or an
@@ -84,7 +89,7 @@ const wordmarkSize = computed(() => Math.round(props.size / 0.727))
         files. Both inherit their colour from whatever bar they sit on.
       -->
       <span
-        class="font-bold leading-none tracking-tight"
+        class="font-bold leading-none"
         :style="{ fontSize: `${wordmarkSize}px` }"
       >TAIDA</span>
     </span>
@@ -96,12 +101,17 @@ const wordmarkSize = computed(() => Math.round(props.size / 0.727))
       on the same vertical line. Left ragged, the block looked like it was
       leaning off the right edge of the lockup.
 
+      That also caps how large this line can be set — past ~14 px bold the
+      sentence outgrows the row above and wraps, which is why the wordmark
+      above dropped its tight tracking to make room. Anything larger needs the
+      mark and wordmark to grow with it.
+
       It only appears from sm: at ~200 px it would push the search, locale and
       menu buttons off a narrow phone. Hiding it collapses the row, leaving the
       mark and wordmark side by side.
     -->
     <span
-      class="mt-2 hidden w-full text-[11px] font-medium leading-none opacity-80 [text-align-last:justify] sm:block"
+      class="mt-2 hidden w-full text-[14px] font-bold leading-none tracking-[-0.03em] opacity-80 [text-align-last:justify] sm:block"
     >
       Your Partner for Business Excellence
     </span>

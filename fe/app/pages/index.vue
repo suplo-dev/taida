@@ -38,7 +38,7 @@ useSeo(() => ({
 <template>
   <div>
     <!-- 1. Hero -->
-    <section class="relative isolate overflow-hidden bg-gradient-to-br from-cream-100 via-cream-200 to-cream-300">
+    <section class="relative isolate overflow-hidden bg-cream-300">
       <div class="absolute inset-0 opacity-25" aria-hidden="true">
         <div class="absolute -right-24 top-1/2 size-[32rem] -translate-y-1/2 rounded-full bg-brand-300 blur-3xl" />
       </div>

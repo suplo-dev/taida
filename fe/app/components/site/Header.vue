@@ -70,7 +70,7 @@ onClickOutside(header, () => (openPanel.value = null))
       bars of this kind hold — while staying short enough to keep sticking to
       the top without eating the viewport.
     -->
-    <div class="mx-auto flex h-20 max-w-8xl items-center gap-4 px-4 sm:px-6 lg:h-28 lg:gap-8 lg:px-8 xl:px-12">
+    <div class="mx-auto flex h-20 max-w-8xl items-center gap-4 px-4 sm:px-6 lg:h-28 lg:gap-6 lg:px-8 xl:px-12">
       <SiteLogo :logo="chrome?.settings.logo" />
 
       <!--
@@ -82,7 +82,7 @@ onClickOutside(header, () => (openPanel.value = null))
       <nav class="ml-auto hidden items-stretch gap-1 md:flex">
         <button
           type="button"
-          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-base font-semibold transition lg:px-4 lg:text-lg xl:px-5"
+          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-1.5 text-base font-semibold transition lg:px-3.5 lg:text-lg xl:px-5"
           :class="openPanel === 'industries' ? 'border-accent-400 text-white' : 'border-transparent text-brand-50 hover:text-white'"
           @click="openPanel = openPanel === 'industries' ? null : 'industries'"
         >
@@ -92,7 +92,7 @@ onClickOutside(header, () => (openPanel.value = null))
 
         <button
           type="button"
-          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-2.5 text-base font-semibold transition lg:px-4 lg:text-lg xl:px-5"
+          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-1.5 text-base font-semibold transition lg:px-3.5 lg:text-lg xl:px-5"
           :class="openPanel === 'services' ? 'border-accent-400 text-white' : 'border-transparent text-brand-50 hover:text-white'"
           @click="openPanel = openPanel === 'services' ? null : 'services'"
         >
@@ -113,7 +113,7 @@ onClickOutside(header, () => (openPanel.value = null))
           v-for="link in chrome?.header.slice(2) ?? []"
           :key="link.id"
           :to="link.url ?? '/'"
-          class="flex items-center whitespace-nowrap border-b-2 border-transparent px-2.5 text-base font-semibold text-brand-50 transition hover:text-white lg:px-4 lg:text-lg xl:px-5"
+          class="flex items-center whitespace-nowrap border-b-2 border-transparent px-1.5 text-base font-semibold text-brand-50 transition hover:text-white lg:px-3.5 lg:text-lg xl:px-5"
           active-class="border-accent-400! text-white"
         >
           {{ link.label }}
@@ -150,7 +150,7 @@ onClickOutside(header, () => (openPanel.value = null))
             type="search"
             :placeholder="t('search.headerPlaceholder')"
             :aria-label="t('nav.search')"
-            class="w-40 2xl:w-56 appearance-none bg-transparent py-2.5 text-base font-medium text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-500"
+            class="w-36 2xl:w-56 appearance-none bg-transparent py-2.5 text-base font-medium text-neutral-900 outline-none placeholder:font-normal placeholder:text-neutral-500"
           >
           <button
             type="submit"
