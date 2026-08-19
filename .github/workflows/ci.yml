@@ -146,3 +146,17 @@ jobs:
           pages=$(find .output/public -name index.html | wc -l)
           echo "Generated $pages pages"
           test "$pages" -gt 40
+
+          # A page whose API call failed still gets written to disk: useAsyncData
+          # keeps the error in the payload's `_errors` instead of throwing, so
+          # `failOnError` stays quiet and nitro reports "Total errors: 0". The
+          # page count above passes too — the page exists, it is just empty of
+          # everything the API was supposed to fill in. The serialised error is
+          # the only trace, and a clean build carries no "NuxtError" anywhere.
+          broken=$(grep -rl 'NuxtError' .output/public --include='*.html' || true)
+          if [ -n "$broken" ]; then
+            echo "::error::These pages rendered with a failed API call:"
+            echo "$broken"
+            grep -rhoa '\[GET\][^,]*' .output/public --include='*.html' | sort -u | head
+            exit 1
+          fi

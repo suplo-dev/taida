@@ -51,6 +51,29 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm generate
 
+      # `prerender.failOnError` chỉ bắt trang trả 404, không bắt lệnh gọi API
+      # hỏng bên trong một trang vẫn dựng xong. `useAsyncData` giữ lỗi đó lại
+      # trong `_errors` của payload rồi ghi trang ra đĩa như thường, và nitro
+      # tổng kết "Total errors: 0".
+      #
+      # Đúng chuyện đó đã lên hosting ngày 19/08: một lượt `/menus/utility` rớt
+      # kết nối khi dựng trang chủ, `useSiteData` mất cả settings lẫn ba menu, và
+      # trang chủ ra ngoài với hero tiếng Anh mặc định, không menu, không hotline.
+      # Cả CI lẫn smoke test đều xanh — chúng chỉ đếm trang và kiểm tra HTTP 200.
+      #
+      # Payload nhúng ở cuối mỗi trang là nơi duy nhất còn dấu vết, dưới dạng
+      # chuỗi "NuxtError". Một bản build sạch không có chuỗi đó ở đâu cả.
+      - name: Kiểm tra bản build không nuốt lỗi API
+        working-directory: fe
+        run: |
+          broken="$(grep -rl 'NuxtError' .output/public --include='*.html' || true)"
+          [ -z "$broken" ] && { echo "Không trang nào kèm lỗi dữ liệu."; exit 0; }
+
+          echo "::error::Các trang sau dựng xong nhưng thiếu dữ liệu, không đẩy lên hosting:"
+          echo "$broken"
+          grep -rhoa '\[GET\][^,]*' .output/public --include='*.html' | sort -u | head
+          exit 1
+
       # Site đi qua FTP dưới dạng đúng một file. Dấu `.` là toàn bộ nội dung bên
       # trong thư mục, và `zip` đẩy cả dotfile — `.htaccess` không bị bỏ quên như
       # khi kéo tay bằng FileZilla.
