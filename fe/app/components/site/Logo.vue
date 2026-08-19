@@ -72,12 +72,6 @@ const width = computed(() => {
         shape the client uploads later.
       -->
       <span class="flex h-[calc(var(--mark)_+_12px)] shrink-0 items-center justify-center rounded-md bg-white p-1.5 ring-1 ring-primary-950/5">
-        <!--
-          Served through @nuxt/image whether it is the bundled file or an
-          upload: both come back as a WebP at twice the rendered size, from
-          this origin. Handing the browser the original instead means a second
-          connection to the API and a file an order of magnitude too big.
-        -->
         <NuxtImg
           :src="src"
           alt=""
@@ -87,42 +81,8 @@ const width = computed(() => {
           class="h-[var(--mark)] w-auto max-w-40 object-contain"
         />
       </span>
-
-      <!--
-        Wordmark and slogan are brand copy, not interface copy: they read the
-        same in both locales, so they stay here rather than in the message
-        files. Both inherit their colour from whatever bar they sit on.
-
-        The type size is the mark's height divided by Be Vietnam Pro's 0.740 em
-        cap height — read off its OS/2 table, and the same in every weight — so
-        the capitals stand exactly as tall as the mark beside them, which is
-        what makes the pair read as one lockup rather than a logo with a label.
-        Divided in CSS rather than in script so it follows `--mark` across the
-        breakpoint. Changing `--font-sans` means re-reading this number; it is a
-        property of the face, not a magic constant.
-      -->
-      <span class="font-bold leading-none tracking-tight [font-size:calc(var(--mark)/0.74)]">TAIDA</span>
+      <span class="font-bold leading-none tracking-tight pt-1 [font-size:calc(var(--mark)/0.74)]">TAIDA</span>
     </span>
-
-    <!--
-      `text-align-last: justify` makes the slogan fill the block's width rather
-      than sit ragged-right, so the two rows end on the same vertical line
-      instead of one leaning off the right edge.
-
-      It only pulls its own weight while the mark-plus-wordmark row above is the
-      wider of the two: that row sets the block width and the slogan's word
-      spaces open up to meet it. Set larger than the row can cover the slogan
-      becomes the widest line itself, the justify goes inert, and the row above
-      is what ends short — which is what 14 px did, measuring ~242 px against
-      the row's ~205 px. At 12 px it measures ~208 px inside a ~209 px row, so
-      the five word spaces share a pixel and a half and the two rows finish
-      level. Both numbers move together if the mark is re-sized, so keep the
-      slogan the shorter of the two.
-
-      It only appears from sm: at ~200 px it would push the search, locale and
-      menu buttons off a narrow phone. Hiding it collapses the row, leaving the
-      mark and wordmark side by side.
-    -->
     <span
       class="mt-2 hidden w-full text-[12px] font-bold leading-none tracking-[-0.03em] opacity-80 [text-align-last:justify] sm:block"
     >
