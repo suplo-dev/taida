@@ -1,7 +1,7 @@
 <?php
 
 /**
- * Giải nén bản build ngay trên hosting, thay cho việc đẩy từng file qua FTP.
+ * Giải nén một bản build ngay trên hosting, thay cho việc đẩy từng file qua FTP.
  *
  * Vì sao cần: hosting đặt ở Việt Nam còn runner của GitHub Actions ở Mỹ, RTT
  * khoảng 250ms. Site tĩnh có 813 file (mỗi trang sinh thêm bản `.br` và `.gz`
@@ -13,25 +13,56 @@
  *
  * Cách chữa duy nhất có hiệu quả là bỏ hẳn 813 lượt round-trip: nén cả site
  * thành một file zip 5 MB, đẩy đúng một lần, rồi giải nén tại chỗ. Phần chậm
- * biến mất chứ không được chia nhỏ.
+ * biến mất chứ không được chia nhỏ. Bản backend (`vendor/` vài chục nghìn file)
+ * còn lệch hơn nữa, nên dùng chung đúng cơ chế này.
  *
  * File này KHÔNG nằm sẵn trên hosting. Workflow upload nó cùng bản build, gọi
  * một lần, và nó tự xoá mình ở dòng cuối. Token được sinh ngẫu nhiên mỗi lần
  * chạy và ghi đè vào hằng số dưới đây lúc upload, nên không có trong git và
  * cũng không dùng lại được cho lần sau.
  *
- * Bước dọn file cũ thay cho `mirror --delete`: thứ gì có trên hosting mà không
- * có trong zip thì bị xoá. Hai thư mục được giữ lại vì do hosting quản chứ
- * không do build sinh ra — xoá `.well-known/` là mất gia hạn SSL.
+ * Cùng một file dùng cho cả FE lẫn BE; ba hằng số dưới đây là chỗ khác nhau và
+ * đều được workflow thay lúc upload.
  */
 
 // Workflow thay chuỗi này bằng token thật lúc upload. Còn nguyên nghĩa là file
 // bị lộ ra ngoài quy trình deploy, khi đó không được phép chạy bất cứ thứ gì.
 const TOKEN = '__DEPLOY_TOKEN__';
 
-const ARCHIVE = '.deploy-site.zip';
+/**
+ * Thư mục sẽ được giải nén vào, TÍNH TỪ chỗ đặt file này.
+ *
+ *   FE  '.'   script nằm ngay trong document root, cũng chính là gốc site.
+ *   BE  '..'  document root của api.taida.vn là `<gốc Laravel>/public`, nhưng zip
+ *             chứa cả cây Laravel (app/, vendor/, artisan…) nên phải giải nén ra
+ *             thư mục cha. Script vẫn phải nằm trong public/ vì đó là phần duy
+ *             nhất gọi được qua HTTP. Trường hợp hosting không cho đổi document
+ *             root và phải trỏ thẳng vào gốc Laravel, `be/.htaccess` đẩy mọi
+ *             request vào `public/` nên đường dẫn ở đây vẫn đúng y hệt.
+ */
+const ROOT = '__DEPLOY_ROOT__';
+
+/**
+ * Xoá thứ có trên hosting mà không có trong zip (thay cho `mirror --delete`).
+ *
+ *   FE  true   trang cũ còn sót lại là trang VẪN ĐƯỢC PHỤC VỤ — đổi slug bài blog
+ *              mà không dọn thì cả hai địa chỉ cùng sống, Google thấy trùng nội dung.
+ *   BE  false  .env, storage/ (ảnh người dùng upload) và mọi thứ hosting tự quản
+ *              đều nằm ngoài zip. Quét xoá ở đây là mất dữ liệu thật. File PHP cũ
+ *              còn sót lại thì vô hại: không route nào trỏ tới nữa.
+ */
+// Là chuỗi chứ không phải bool để file chưa thay placeholder vẫn là PHP hợp lệ —
+// `php -l` trong CI mới bắt được lỗi cú pháp thật thay vì chết ngay ở dòng này.
+const PRUNE = '__DEPLOY_PRUNE__';
+
+const ARCHIVE = '.deploy-payload.zip';
 const TMPDIR  = '.deploy-tmp';
-const KEEP    = ['.well-known', 'cgi-bin'];
+
+/**
+ * Không đụng tới khi quét xoá, kể cả khi PRUNE bật. Đây là những thứ do hosting
+ * quản chứ không do build sinh ra — xoá `.well-known/` là mất gia hạn SSL.
+ */
+const KEEP = ['.well-known', 'cgi-bin', '.env', 'storage'];
 
 header('Content-Type: text/plain; charset=UTF-8');
 header('X-Robots-Tag: noindex, nofollow');
@@ -48,10 +79,19 @@ if (!is_string($given) || TOKEN === '__DEPLOY' . '_TOKEN__' || !hash_equals(TOKE
 @set_time_limit(0);
 @ignore_user_abort(true);
 
-$root    = __DIR__;
-$archive = $root . '/' . ARCHIVE;
-$tmp     = $root . '/' . TMPDIR;
-$self    = basename(__FILE__);
+$root = realpath(__DIR__ . '/' . ROOT);
+if ($root === false) {
+    fail('không giải được đường dẫn gốc (' . ROOT . ')');
+}
+
+$archive = __DIR__ . '/' . ARCHIVE;
+$tmp     = __DIR__ . '/' . TMPDIR;
+
+// Đường dẫn của chính script và của zip, TÍNH TỪ $root — với BE thì chúng nằm
+// trong `public/` chứ không ở tầng gốc, nên so sánh bằng basename là hụt và bước
+// quét xoá sẽ xoá mất chính file đang chạy.
+$selfRel    = relativeTo($root, (string) realpath(__FILE__));
+$archiveRel = relativeTo($root, $archive);
 
 if (!is_file($archive)) {
     fail('không thấy ' . ARCHIVE . ' — bước upload chưa chạy xong?');
@@ -69,7 +109,7 @@ extractTo($archive, $tmp);
 $want = listFiles($tmp);
 if ($want === []) {
     rrmdir($tmp);
-    fail('archive rỗng — không ghi đè site bằng nội dung trống');
+    fail('archive rỗng — không ghi đè bằng nội dung trống');
 }
 $wanted = array_fill_keys($want, true);
 
@@ -95,21 +135,23 @@ foreach ($want as $rel) {
 }
 
 $removed = 0;
-foreach (listFiles($root, '', array_merge(KEEP, [TMPDIR])) as $rel) {
-    if (isset($wanted[$rel]) || $rel === ARCHIVE || $rel === $self) {
-        continue;
+if (PRUNE === '1') {
+    foreach (listFiles($root, '', array_merge(KEEP, [TMPDIR])) as $rel) {
+        if (isset($wanted[$rel]) || $rel === $archiveRel || $rel === $selfRel) {
+            continue;
+        }
+        if (@unlink($root . '/' . $rel)) {
+            $removed++;
+        }
     }
-    if (@unlink($root . '/' . $rel)) {
-        $removed++;
-    }
-}
 
-// Thư mục rỗng còn lại sau khi xoá: rmdir bỏ qua thư mục còn nội dung, nên chỉ
-// cần đi từ sâu ra nông một lượt.
-$dirs = listDirs($root, '', array_merge(KEEP, [TMPDIR]));
-usort($dirs, fn($a, $b) => substr_count($b, '/') <=> substr_count($a, '/'));
-foreach ($dirs as $rel) {
-    @rmdir($root . '/' . $rel);
+    // Thư mục rỗng còn lại sau khi xoá: rmdir bỏ qua thư mục còn nội dung, nên chỉ
+    // cần đi từ sâu ra nông một lượt.
+    $dirs = listDirs($root, '', array_merge(KEEP, [TMPDIR]));
+    usort($dirs, fn ($a, $b) => substr_count($b, '/') <=> substr_count($a, '/'));
+    foreach ($dirs as $rel) {
+        @rmdir($root . '/' . $rel);
+    }
 }
 
 rrmdir($tmp);
@@ -126,6 +168,17 @@ function fail(string $message): void
     http_response_code(500);
     echo 'ERROR: ' . $message . "\n";
     exit(1);
+}
+
+/** Đường dẫn của $path tính từ $root; trả về '' nếu $path nằm ngoài $root. */
+function relativeTo(string $root, string $path): string
+{
+    $path = (string) (realpath($path) ?: $path);
+    if (strncmp($path, $root . '/', strlen($root) + 1) !== 0) {
+        return '';
+    }
+
+    return substr($path, strlen($root) + 1);
 }
 
 function extractTo(string $archive, string $dest): void

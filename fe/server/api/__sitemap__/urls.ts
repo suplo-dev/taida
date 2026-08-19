@@ -17,8 +17,15 @@ const PREFIXES: Record<SitemapEntry['type'], { vi: string, en: string }> = {
   page: { vi: '/', en: '/en/' },
 }
 
+/**
+ * @nuxtjs/sitemap types `priority` as a union of the eleven values with one
+ * decimal, not as `number` — anything else is rejected at build time. Naming it
+ * once keeps that constraint in one place instead of at every call site.
+ */
+type Priority = 0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 | 0.6 | 0.7 | 0.8 | 0.9 | 1
+
 /** Listing and landing pages, which have no database record behind them. */
-const STATIC_PAGES: { vi: string, en: string, priority: number }[] = [
+const STATIC_PAGES: { vi: string, en: string, priority: Priority }[] = [
   { vi: '/', en: '/en', priority: 1 },
   { vi: '/dich-vu', en: '/en/services', priority: 0.9 },
   { vi: '/nganh-nghe', en: '/en/industries', priority: 0.9 },
@@ -56,7 +63,7 @@ export default defineSitemapEventHandler(async () => {
  * Emits both locale URLs, each pointing at the other through `alternatives`
  * so Google can pair them up.
  */
-function localisedPair(vi: string, en: string | null, lastmod: string | null, priority: number) {
+function localisedPair(vi: string, en: string | null, lastmod: string | null, priority: Priority) {
   const alternatives = [
     { hreflang: 'vi', href: vi },
     ...(en ? [{ hreflang: 'en', href: en }] : []),

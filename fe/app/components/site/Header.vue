@@ -250,7 +250,8 @@ onClickOutside(header, () => (openPanel.value = null))
     <!-- Mobile accordion -->
     <div v-if="mobileOpen" class="border-t border-white/15 bg-brand-600 md:hidden">
       <nav class="space-y-1 px-4 py-4">
-        <details v-for="group in ([
+        <details
+v-for="group in ([
           { key: 'industries', label: t('nav.industries'), to: 'nganh-nghe', items: catalogues?.industries ?? [] },
           { key: 'services', label: t('nav.services'), to: 'dich-vu', items: catalogues?.services ?? [] },
         ])" :key="group.key" class="border-b border-white/15 pb-2">

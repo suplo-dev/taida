@@ -147,7 +147,13 @@ function field(locale: Locale, name: string): string {
             :error="error('published_at')"
             hint="Đặt ngày tương lai để hẹn giờ."
           >
-            <UInput v-model="form.published_at" type="datetime-local" class="w-full" />
+            <!-- Xem ghi chú ở AdminTreeContentForm: null (đăng ngay) khác chuỗi rỗng. -->
+            <UInput
+              :model-value="form.published_at ?? undefined"
+              type="datetime-local"
+              class="w-full"
+              @update:model-value="(value: string | number) => form.published_at = String(value) || null"
+            />
           </AdminFormField>
 
           <label class="flex items-center gap-2 text-sm text-neutral-700">
@@ -162,12 +168,19 @@ function field(locale: Locale, name: string): string {
           </AdminFormField>
 
           <AdminFormField label="Danh mục" :error="error('category_id')">
+            <!--
+              `null` là "chưa phân loại" đối với API — bỏ trống thì khoá phải đi
+              kèm giá trị null, không phải biến mất khỏi JSON. USelectMenu lại chỉ
+              nhận `undefined` cho trạng thái rỗng, nên hai chiều được nối tay ở
+              đây thay vì `v-model`.
+            -->
             <USelectMenu
-              v-model="form.category_id"
+              :model-value="form.category_id ?? undefined"
               class="w-full"
               value-key="value"
               :items="options?.categories ?? []"
               placeholder="Chưa phân loại"
+              @update:model-value="(value: number | undefined) => form.category_id = value ?? null"
             />
           </AdminFormField>
 

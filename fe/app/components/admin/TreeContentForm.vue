@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminService, ContentStatus, Envelope, Locale } from '~/types/api'
+import type { AdminIndustry, AdminService, ContentStatus, Envelope, Locale } from '~/types/api'
 
 /**
  * Create/edit form shared by services and industries. `linkEndpoint` is the
@@ -14,16 +14,23 @@ const props = defineProps<{
   title: string
 }>()
 
+/**
+ * Hai catalogue dùng chung đúng một hình dạng, chỉ khác tên trường liên kết
+ * (`industry_ids` với dịch vụ, `service_ids` với ngành nghề). Giao của hai kiểu
+ * cho phép đọc cả hai trường — cả hai đều optional nên không kiểu nào bị nới rộng.
+ */
+type TreeRecord = AdminService & AdminIndustry
+
 const route = useRoute()
 const api = useApi()
-const { saving, error, find, save } = useAdminResource<AdminService>(props.endpoint)
+const { saving, error, find, save } = useAdminResource<TreeRecord>(props.endpoint)
 
 const id = computed(() => (route.params.id === 'new' ? null : Number(route.params.id)))
 
 const form = reactive({
   parent_id: null as number | null,
   cover_media_id: null as number | null,
-  icon: '' as string | null,
+  icon: '',
   sort_order: 0,
   is_featured: false,
   status: 'draft' as ContentStatus,
@@ -39,7 +46,7 @@ const form = reactive({
   }),
 })
 
-const cover = ref<AdminService['cover']>(null)
+const cover = ref<TreeRecord['cover']>(null)
 
 const { data: options } = await useAsyncData(`admin:${props.endpoint}:options`, async () => {
   const [own, linked] = await Promise.all([
@@ -68,7 +75,7 @@ if (id.value) {
     is_featured: record.is_featured,
     status: record.status,
     published_at: record.published_at ? record.published_at.slice(0, 16) : null,
-    linked: (record.industry_ids ?? record.service_ids ?? []) as number[],
+    linked: record[props.linkField] ?? [],
   })
 
   cover.value = record.cover
@@ -170,7 +177,14 @@ function field(locale: Locale, name: string): string {
             :error="error('published_at')"
             hint="Để trống nghĩa là đăng ngay."
           >
-            <UInput v-model="form.published_at" type="datetime-local" class="w-full" />
+            <!-- Ô trống nghĩa là đăng ngay, và API phân biệt null với chuỗi rỗng;
+                 UInput chỉ nhận `undefined` cho trạng thái rỗng nên nối tay hai chiều. -->
+            <UInput
+              :model-value="form.published_at ?? undefined"
+              type="datetime-local"
+              class="w-full"
+              @update:model-value="(value: string | number) => form.published_at = String(value) || null"
+            />
           </AdminFormField>
 
           <label class="flex items-center gap-2 text-sm text-neutral-700">
@@ -186,11 +200,12 @@ function field(locale: Locale, name: string): string {
 
           <AdminFormField label="Thuộc mục cha" :error="error('parent_id')">
             <USelectMenu
-              v-model="form.parent_id"
+              :model-value="form.parent_id ?? undefined"
               class="w-full"
               value-key="value"
               :items="options?.parents ?? []"
               placeholder="Không có"
+              @update:model-value="(value: number | undefined) => form.parent_id = value ?? null"
             />
           </AdminFormField>
 

@@ -6,8 +6,10 @@
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate --dotenv .env.production && rm -rf .output/public/_og-static-fonts",
+    "lint": "eslint .",
+    "postinstall": "nuxt prepare",
     "preview": "nuxt preview",
-    "postinstall": "nuxt prepare"
+    "typecheck": "nuxt typecheck"
   },
   "dependencies": {
     "@iconify-json/lucide": "^1.2.121",
@@ -24,5 +26,11 @@
     "nuxt": "^4.5.1",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0"
+  },
+  "devDependencies": {
+    "@nuxt/eslint": "1.15.2",
+    "eslint": "^10.8.1",
+    "typescript": "^6.0.3",
+    "vue-tsc": "^3.3.10"
   }
 }

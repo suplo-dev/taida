@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { Envelope, Service } from '~/types/api'
 
-const { t, locale } = useI18n()
+const { t } = useI18n()
 const localePath = useLocalePath()
 
 const { data: services } = await useApiData<Envelope<Service[]>>('/services')

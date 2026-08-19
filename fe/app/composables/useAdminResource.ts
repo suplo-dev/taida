@@ -15,7 +15,7 @@ export const LOCALE_LABELS: Record<Locale, string> = {
  * shape — load a list, load one record, save it, delete it — so the pages only
  * describe their fields and let this handle the plumbing.
  */
-export function useAdminResource<TRecord, TPayload = Record<string, unknown>>(endpoint: string) {
+export function useAdminResource<TRecord, TPayload extends Record<string, unknown> = Record<string, unknown>>(endpoint: string) {
   const api = useApi()
   const toast = useToast()
 

@@ -9,6 +9,9 @@ export default defineNuxtConfig({
     '@nuxtjs/i18n',
     '@nuxtjs/seo',
     '@vueuse/nuxt',
+    // Chỉ sinh ra `.nuxt/eslint.config.mjs` (preset hợp với chính bộ module ở
+    // trên) cho `pnpm lint` dùng — không thêm gì vào bundle.
+    '@nuxt/eslint',
   ],
 
   css: ['~/assets/css/main.css'],
@@ -221,7 +224,11 @@ export default defineNuxtConfig({
     // takes no comments, so the reason lives here.
     zeroRuntime: true,
 
-    defaults: { component: 'OgTemplate', width: 1200, height: 630 },
+    // `component` cố ý không có ở đây: nuxt-og-image v6 đã bỏ `defaults.component`
+    // (renderer nay suy ra từ đuôi tên file, `OgTemplate.takumi.vue`). Mọi lời gọi
+    // đều nêu tên component tường minh — xem `defineOgImage('OgTemplate', …)` trong
+    // useSeo.ts — nên khai báo lại ở đây chỉ là cấu hình chết mà module lặng lẽ bỏ qua.
+    defaults: { width: 1200, height: 630 },
 
     // The renderer downloads only the `latin` subset by default, which has the
     // ordinary accents (à á ả ô) but none of ư ơ đ or the U+1EA0–1EF9 block —

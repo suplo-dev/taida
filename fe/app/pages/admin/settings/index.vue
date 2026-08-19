@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Envelope, Media } from '~/types/api'
+import type { Envelope, Locale, Media } from '~/types/api'
 
 definePageMeta({ layout: 'admin', middleware: 'auth' })
 
@@ -25,11 +25,18 @@ const form = reactive({
   logo: (logoPreview.value?.id ?? null) as number | null,
   hotline: (settings.value?.hotline as string) ?? '',
   email: (settings.value?.email as string) ?? '',
-  address: { ...emptyTranslations(''), ...(settings.value?.address as object ?? {}) } as Record<string, string>,
+  // Không dùng `emptyTranslations('')` được: helper đó nhân bản một *object*
+  // cho mỗi locale, nên `{...''}` ra `{}` — ô nhập địa chỉ nhận một object rỗng
+  // và hiện "[object Object]" khi cài đặt chưa có giá trị nào.
+  address: {
+    vi: '',
+    en: '',
+    ...(settings.value?.address as Partial<Record<Locale, string>> ?? {}),
+  } as Record<Locale, string>,
   hero: {
     vi: { title: '', subtitle: '', ...((settings.value?.hero as Record<string, object>)?.vi ?? {}) },
     en: { title: '', subtitle: '', ...((settings.value?.hero as Record<string, object>)?.en ?? {}) },
-  } as Record<string, { title: string, subtitle: string }>,
+  } as Record<Locale, { title: string, subtitle: string }>,
   social: {
     linkedin: '',
     facebook: '',

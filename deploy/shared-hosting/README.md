@@ -33,7 +33,7 @@ SSG: đưa Nuxt lên chỗ chạy được Node, hoặc chuyển sang VPS theo
 
 | | |
 |---|---|
-| PHP | 8.3 trở lên (`composer.json` yêu cầu `^8.3`) |
+| PHP | **8.5** (`composer.json` chỉ yêu cầu `^8.3`, nhưng workflow cài `vendor/` bằng 8.5 rồi upload nguyên khối — hosting chạy bản khác là chạy trên cây thư viện giải cho bản khác. Hosting của bạn là 8.3/8.4 thì đổi `PHP_VERSION` trong cả `ci.yml` lẫn `deploy.yml`) |
 | MySQL | 8.0 trở lên |
 | Subdomain | tạo được `api.taida.vn`, trỏ document root vào thư mục `public` của Laravel |
 | Apache | bật `mod_rewrite`, `mod_headers`, `mod_expires`, `mod_mime` |
@@ -79,7 +79,11 @@ Kết quả nằm ở `fe/.output/public/` (~9 MB): 82 trang HTML, 70 ảnh chia
 xã hội, sitemap, và `.htaccess` — tất cả đều là file tĩnh, không cần tiến trình
 nào chạy nền.
 
-## 3. Đưa Laravel lên
+## 3. Đưa Laravel lên (lần đầu)
+
+> Từ lần thứ hai trở đi backend **tự lên theo workflow** — xem [mục 6b](#6b-deploy-backend-tự-động).
+> Mục này chỉ còn là những thứ workflow không làm hộ được: tạo subdomain, tạo
+> database, và viết file `.env` trên hosting.
 
 Upload toàn bộ `be/` (trừ `node_modules`, `tests`) vào một thư mục **ngoài**
 `public_html`, ví dụ `~/api`. Trỏ document root của subdomain `api.taida.vn`
@@ -175,7 +179,8 @@ Settings → Environments → **production** (không phải mục secrets chung 
 | Secret | `DEPLOY_FTP_HOST` | `ftp.taida.vn` hoặc IP máy chủ |
 | Secret | `DEPLOY_FTP_USER` | tên tài khoản FTP trong cPanel |
 | Secret | `DEPLOY_FTP_PASSWORD` | mật khẩu tài khoản đó |
-| Variable | `DEPLOY_SITE_PATH` | đường dẫn **theo góc nhìn của FTP**, không có `/` ở cuối |
+| Variable | `DEPLOY_SITE_PATH` | đường dẫn **theo góc nhìn của FTP** tới thư mục chứa site tĩnh, không có `/` ở cuối |
+| Variable | `DEPLOY_API_PATH` | đường dẫn FTP tới **gốc ứng dụng Laravel** — thư mục CHA của `public/`, ví dụ `/api` |
 | Variable | `NUXT_PUBLIC_SITE_URL` | `https://www.taida.vn` |
 | Variable | `NUXT_PUBLIC_API_BASE` | `https://api.taida.vn` |
 
@@ -222,6 +227,66 @@ pnpm generate
 
 Nhớ bật hiển thị file ẩn trong FileZilla để `.htaccess` đi cùng — workflow thì
 tự đẩy dotfile nên không dính lỗi này.
+
+## 6b. Deploy backend tự động
+
+Cùng một workflow **Publish site** cũng đẩy Laravel lên `api.taida.vn`, ngay
+trước khi build site tĩnh — thứ tự đó là bắt buộc: mỗi trang HTML được dựng bằng
+cách gọi vào API, nên một migration thêm trường mới phải lên **trước** bản HTML
+lẽ ra phải hiển thị trường đó.
+
+Chỉ muốn build lại nội dung, không đụng tới backend: bấm *Run workflow* rồi **bỏ
+tick** ô "Đẩy cả backend". Push vào `main` thì luôn đẩy cả hai.
+
+Quy trình một lần chạy:
+
+```
+composer install --no-dev   →  zip cả cây Laravel (trừ .env, storage/, tests/)
+   →  thăm dò FTP↔HTTP      →  đẩy 1 file zip + 2 script PHP
+   →  _deploy-unpack.php    →  giải nén ra thư mục cha của public/
+   →  _deploy-artisan.php   →  clear cache → migrate → config/route/event:cache
+   →  dọn script            →  smoke test
+```
+
+**Bước thăm dò** ghi một file text vài byte qua FTP rồi đọc lại nó qua HTTP.
+Nghe thừa, nhưng nó là thứ duy nhất phân biệt được "upload thành công" với
+"upload đúng chỗ": nếu `DEPLOY_API_PATH` sai, lftp vẫn báo xanh — nó chỉ lặng lẽ
+tạo một cây thư mục mới ở nhánh khác — và triệu chứng duy nhất là một trang 404
+của hosting ở tận bước sau. Sai thì workflow in luôn cây thư mục theo góc nhìn
+FTP để đối chiếu.
+
+**`_deploy-unpack.php` là cùng một file với FE**, chỉ khác hai hằng số được thay
+lúc upload:
+
+| | FE | Backend |
+|---|---|---|
+| `ROOT` | `.` (script nằm ngay trong document root) | `..` (script ở `public/`, zip giải nén ra thư mục cha) |
+| `PRUNE` | `1` — trang cũ còn sót là trang vẫn được phục vụ | `0` — `.env` và `storage/` nằm ngoài zip, quét xoá là mất dữ liệu thật |
+
+**`_deploy-artisan.php`** là cách duy nhất chạy được `php artisan migrate` khi
+hosting không mở SSH: nó nạp chính Laravel vừa giải nén rồi gọi lệnh qua API
+console của framework. Nó là **lượt HTTP thứ hai**, tách hẳn khỏi lượt giải nén —
+gọi chung một request thì Laravel bootstrap bằng autoloader mới trong khi PHP còn
+giữ file cũ trong opcache, hỏng thất thường và rất khó chẩn đoán.
+
+Cả hai script tự xoá mình ngay sau khi chạy, nhận một token sinh ngẫu nhiên cho
+đúng lần deploy đó, và smoke test kiểm tra lại rằng chúng đã biến mất.
+
+**Những gì workflow KHÔNG làm hộ**, vì chúng chỉ đúng một lần:
+
+- tạo subdomain `api.taida.vn` và trỏ document root vào `<DEPLOY_API_PATH>/public`;
+- tạo database MySQL;
+- viết `.env` trên hosting (mục 3). File này **cố ý nằm ngoài zip** — nó phải
+  sống sót qua mọi lần deploy. Thiếu nó thì `_deploy-artisan.php` dừng ngay và
+  nói rõ, chứ không chạy migrate trên cấu hình rỗng;
+- `php artisan storage:link` — có chạy, nhưng được phép hỏng: nhiều shared
+  hosting chặn symlink. Mất nó thì ảnh upload không truy cập được qua URL, API
+  vẫn sống.
+
+Đổi phiên bản PHP trên hosting thì sửa `PHP_VERSION` ở **cả hai** file
+`.github/workflows/ci.yml` và `deploy.yml`: `vendor/` được cài trên runner rồi
+upload nguyên khối, nên composer giải phụ thuộc theo phiên bản của runner chứ
+không theo phiên bản máy chủ.
 
 ## 7. Tự sinh lại site sau khi biên tập
 
@@ -291,3 +356,7 @@ thay đổi không bị bỏ quên. Lỗi ghi vào `storage/logs/laravel.log`.
 | Sửa nội dung không lên site sau vài phút | thiếu cron `schedule:run`, hoặc `PUBLISH_ENABLED=false`, hoặc token sai — chạy `php artisan site:publish` để nó nói lý do |
 | `pnpm generate` báo 404 giữa chừng | API không truy cập được, hoặc có bản ghi thiếu bản dịch |
 | Build lỗi lạ sau khi đổi cấu hình | xoá `fe/.nuxt` và `fe/.output` rồi build lại |
+| Job **Backend** dừng ở "Ghi được file qua FTP nhưng không đọc lại được qua HTTP" | `DEPLOY_API_PATH` không phải thư mục mà `api.taida.vn` đang phục vụ. Workflow in sẵn cây thư mục theo góc nhìn FTP ngay dưới thông báo đó |
+| Job **Backend** báo `_deploy-unpack.php` trả 404 dù upload xong | document root của API không phải `<DEPLOY_API_PATH>/public` |
+| Job **Backend** báo "không thấy .env" | `.env` trên hosting bị xoá hoặc chưa từng tạo — nó cố ý nằm ngoài bản zip, xem mục 3 |
+| Deploy backend xanh nhưng API trả 500 | `php artisan config:cache` đã chạy trên `.env` sai; sửa `.env` rồi chạy lại workflow |

@@ -12,6 +12,20 @@ concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
+env:
+  # Same PHP as the shared hosting. `composer.json` only asks for `^8.3`, but
+  # testing at that floor means neither CI nor any dev machine runs the version
+  # production runs — and whatever changed between 8.3 and 8.5 (deprecations,
+  # edge-case behaviour) would only surface on the server. deploy.yml builds
+  # `vendor/` with this same value: composer resolves dependencies against the
+  # version used HERE, not the one on the server, so a mismatch skews the whole
+  # dependency tree.
+  #
+  # Changing PHP on hosting means changing it in both places (ci.yml + deploy.yml).
+  PHP_VERSION: '8.5'
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10'
+
 jobs:
   api:
     name: Laravel
@@ -21,8 +35,10 @@ jobs:
 
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
-          extensions: mbstring, pdo_sqlite, gd, fileinfo, intl
+          php-version: ${{ env.PHP_VERSION }}
+          # `zip` is not used by the app: composer needs it to unpack `--prefer-dist`
+          # archives itself instead of shelling out to `unzip` for every package.
+          extensions: mbstring, pdo_sqlite, gd, fileinfo, intl, zip
           coverage: none
           tools: composer:v2
 
@@ -49,11 +65,14 @@ jobs:
         working-directory: be
         run: vendor/bin/pint --test
 
-      # Script giải nén chạy trên hosting, ngoài tầm với của mọi test. Nó vỡ thì
-      # deploy vẫn xong — chỉ lặng lẽ rơi về đường lui đẩy từng file và chậm gấp
-      # ba mươi lần. Một lượt `php -l` là thứ duy nhất bắt được chuyện đó sớm.
-      - name: Check the deploy unpacker
-        run: php -l deploy/shared-hosting/unpack.php
+      # Hai script này chạy TRÊN HOSTING, ngoài tầm với của mọi test. Chúng vỡ thì
+      # deploy vẫn báo xong — chỉ lặng lẽ rơi về đường lui đẩy từng file (chậm gấp
+      # hàng chục lần), hoặc tệ hơn, migration không bao giờ chạy và API mới đứng
+      # trên database cũ. Một lượt `php -l` là thứ duy nhất bắt được chuyện đó sớm.
+      - name: Check the deploy scripts
+        run: |
+          php -l deploy/shared-hosting/unpack.php
+          php -l deploy/shared-hosting/artisan.php
 
       - name: Run tests
         working-directory: be
@@ -72,8 +91,8 @@ jobs:
       # server. sqlite keeps it to one process with no service container.
       - uses: shivammathur/setup-php@v2
         with:
-          php-version: '8.5'
-          extensions: mbstring, pdo_sqlite, gd, fileinfo, intl
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, pdo_sqlite, gd, fileinfo, intl, zip
           coverage: none
           tools: composer:v2
 
@@ -100,11 +119,11 @@ jobs:
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 10
+          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: fe/pnpm-lock.yaml
 
@@ -112,8 +131,26 @@ jobs:
         working-directory: fe
         run: pnpm install --frozen-lockfile
 
+      # Lint và typecheck chạy TRƯỚC generate: chúng mất vài chục giây và nói rõ
+      # sai ở dòng nào, còn generate mất vài phút và một lỗi kiểu chỉ hiện ra dưới
+      # dạng trang dựng thiếu nội dung — nếu nó hiện ra chút nào.
+      #
+      # `pnpm lint` chỉ đỏ vì error; warning (v-html của nội dung CMS) vẫn in ra để
+      # đọc mà không chặn ai cả.
+      - name: Lint
+        working-directory: fe
+        run: pnpm lint
+
+      - name: Typecheck
+        working-directory: fe
+        run: pnpm typecheck
+
       # `prerender.failOnError` is on, so this fails on any page that 404s
       # during the crawl — which is how the broken language switcher was found.
+      #
+      # `pnpm generate` ghim `--dotenv .env.production`, và file đó KHÔNG có trong
+      # git. Biến môi trường đặt sẵn ở đây thắng nội dung file dotenv, nên bước này
+      # trỏ vào API sqlite dựng ở trên dù máy dev có file đó trỏ đi đâu.
       - name: Generate the static site
         working-directory: fe
         env:
@@ -143,6 +180,12 @@ jobs:
           # override the rules above for that subtree instead of adding to them,
           # which is how the source directory ended up publicly readable.
           test "$(find .output/public -name .htaccess | wc -l)" -eq 1
+          # Khu quản trị chỉ tồn tại trong trình duyệt: `.htaccess` viết lại mọi
+          # `/admin/...` thành `/200.html`. Thiếu một trong hai file này thì mỗi lần
+          # F5 trong CMS là một trang 404 — mà bản build vẫn đủ số trang để qua các
+          # kiểm tra ở trên.
+          test -f .output/public/admin/index.html
+          test -f .output/public/200.html
           pages=$(find .output/public -name index.html | wc -l)
           echo "Generated $pages pages"
           test "$pages" -gt 40

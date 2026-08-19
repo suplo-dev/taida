@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { AdminCategory, AdminPage, AdminService, AdminPost, Paginated, Envelope } from '~/types/api'
+import type { AdminPage, AdminPost, AdminService, Envelope, Paginated } from '~/types/api'
 
 definePageMeta({ layout: 'admin', middleware: 'auth' })
 

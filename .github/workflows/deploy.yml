@@ -4,6 +4,11 @@ name: Publish site
 # build lại — bấm "Run workflow" ở tab Actions là đủ, không cần lập trình viên.
 on:
   workflow_dispatch:
+    inputs:
+      api:
+        description: 'Đẩy cả backend (bỏ tick nếu chỉ build lại nội dung)'
+        type: boolean
+        default: true
   push:
     branches: [main]
 
@@ -13,27 +18,329 @@ concurrency:
   group: publish-production
   cancel-in-progress: false
 
+env:
+  # Phải bằng đúng PHP trên hosting: `vendor/` được cài ở đây rồi upload nguyên
+  # khối, nên composer giải phụ thuộc theo phiên bản NÀY chứ không phải phiên bản
+  # máy chủ. Đặt thấp hơn hosting cũng hỏng chứ không chỉ đặt cao hơn — cây thư
+  # viện sinh ra sẽ là cây cho bản cũ. Giữ khớp với ci.yml.
+  PHP_VERSION: '8.5'
+  NODE_VERSION: '22'
+  PNPM_VERSION: '10'
+
 jobs:
   test:
     uses: ./.github/workflows/ci.yml
 
-  # Tách khỏi `publish` để chạy song song với `test`. Trước đây build phải xếp
-  # sau toàn bộ test suite dù nó không dùng gì từ đó — bản build của CI chạy với
-  # API sqlite dựng tạm, bản này đọc API thật, hai thứ khác nhau nên không tái
-  # sử dụng được. Chỉ bước ghi lên hosting mới thật sự cần test xanh.
+  # ────────────────────────────────────────────────────────────────────────────
+  # Backend đi TRƯỚC frontend, không phải song song: bản build tĩnh đọc API để
+  # dựng từng trang. Đảo thứ tự thì một migration thêm trường mới sẽ lên sau bản
+  # HTML lẽ ra phải hiển thị trường đó.
+  # ────────────────────────────────────────────────────────────────────────────
+  api:
+    name: Backend
+    # Chỉ cần test xanh; không phụ thuộc bản build FE.
+    needs: test
+    if: github.event_name != 'workflow_dispatch' || inputs.api
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ env.PHP_VERSION }}
+          extensions: mbstring, pdo_mysql, gd, fileinfo, intl, zip
+          coverage: none
+          tools: composer:v2
+
+      # `--no-dev` bỏ phpunit/pint khỏi bản phát hành, `--classmap-authoritative`
+      # dựng sẵn bản đồ class nên autoloader không phải quét thư mục lúc chạy —
+      # đáng kể trên shared hosting, nơi I/O là thứ chậm nhất.
+      - name: Build the release
+        working-directory: be
+        run: |
+          composer install --no-dev --optimize-autoloader --classmap-authoritative \
+            --no-interaction --no-progress
+
+      # Cùng lý do với FE: đẩy đúng một file thay vì vài chục nghìn file của vendor/.
+      #
+      # Danh sách loại trừ là phần dễ sai nhất ở đây, và mỗi dòng có lý do riêng:
+      #   .env*            bí mật; bản trên hosting phải sống sót qua mọi lần deploy
+      #   storage/         ảnh người dùng upload + log + cache phiên, KHÔNG do build sinh ra
+      #   *.sqlite*        database sqlite của máy dev. `zip` KHÔNG đọc .gitignore, nên mọi
+      #                    file untracked trong be/ đều đi theo bản phát hành nếu không chặn.
+      #                    Runner CI checkout sạch nên hiện chưa có, nhưng cái giá của một
+      #                    lần lọt là đẩy dữ liệu máy dev lên máy chủ.
+      #   bootstrap/cache/ cache config/route của MÁY BUILD, sai hoàn toàn với hosting
+      #   tests/, docker/  không phục vụ request nào
+      #   public/hot|storage  dấu vết của `vite dev` và symlink do `storage:link` tạo lại
+      # Ngoại lệ: giữ lại các file `.gitignore` trong storage/ và bootstrap/cache/ để lần
+      # deploy đầu tiên tự dựng đúng cây thư mục Laravel cần — sau đó chúng vô hại.
+      - name: Nén thành một file
+        working-directory: be
+        run: |
+          zip -q -r -X -9 "$RUNNER_TEMP/api.zip" . \
+            -x '.env*' \
+            -x 'storage/*' \
+            -x 'database/*.sqlite*' \
+            -x 'bootstrap/cache/*' \
+            -x 'tests/*' \
+            -x 'public/hot' -x 'public/storage/*' \
+            -x 'node_modules/*' -x '.git/*' \
+            -x 'docker-compose.yml' \
+            -x 'phpunit.xml' -x '.phpunit.result.cache' \
+            -x 'package.json' -x 'package-lock.json' -x 'vite.config.js' \
+            -x '.claude/*' -x '.cursor/*' -x '.junie/*' -x '.mcp.json' -x 'boost.json' \
+            -x '.git*' -x '.editorconfig' -x '.npmrc' -x '*.md'
+          # Cả `storage/` lẫn `bootstrap/cache/` bị loại ở trên vì nội dung của chúng là
+          # dữ liệu chạy máy, KHÔNG phải mã nguồn. Nhưng loại sạch thì ngay cả entry thư
+          # mục cũng không có trong zip, và Laravel ném thẳng
+          # "The bootstrap/cache directory must be present and writable" lúc bootstrap —
+          # trước cả khi chạm tới lệnh artisan nào. Kéo riêng các file `.gitignore` vào là
+          # đủ dựng đúng cây thư mục mà không mang theo cache của máy build.
+          zip -q -r -X -9 "$RUNNER_TEMP/api.zip" storage bootstrap/cache -i '*/.gitignore'
+          echo "$(unzip -l "$RUNNER_TEMP/api.zip" | tail -1) → $(du -h "$RUNNER_TEMP/api.zip" | cut -f1)"
+
+      # Document root của api.taida.vn là `<DEPLOY_API_PATH>/public`, nên hai script
+      # deploy phải nằm trong public/ (phần duy nhất gọi được qua HTTP) trong khi zip
+      # được giải nén ra thư mục CHA — đó là lý do ROOT='..' ở đây và '.' ở FE. Nếu
+      # hosting không cho đổi document root và tên miền trỏ thẳng vào gốc Laravel thì
+      # `be/.htaccess` đẩy mọi request vào `public/`, nên đường dẫn vẫn đúng y hệt.
+      #
+      # PRUNE tắt: .env và storage/ nằm ngoài zip, quét xoá là mất dữ liệu thật.
+      - name: Upload
+        timeout-minutes: 15
+        env:
+          FTP_HOST: ${{ secrets.DEPLOY_FTP_HOST }}
+          FTP_USER: ${{ secrets.DEPLOY_FTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.DEPLOY_FTP_PASSWORD }}
+          DEST: ${{ vars.DEPLOY_API_PATH }}
+          API: ${{ vars.NUXT_PUBLIC_API_BASE }}
+        run: |
+          set -euo pipefail
+
+          [ -n "$DEST" ] || { echo "::error::thiếu repository variable DEPLOY_API_PATH — xem deploy/shared-hosting/README.md"; exit 1; }
+
+          sudo apt-get install -y -qq lftp \
+            || { sudo apt-get update -qq && sudo apt-get install -y -qq lftp; }
+
+          # Token dùng đúng một lần, sinh ở đây nên không có trong git, và cả hai script
+          # nhận nó đều tự xoá mình ngay sau khi chạy xong.
+          token="$(openssl rand -hex 32)"
+          echo "::add-mask::$token"
+          sed -e "s/__DEPLOY_TOKEN__/$token/" \
+              -e "s|__DEPLOY_ROOT__|..|" \
+              -e "s/__DEPLOY_PRUNE__/0/" \
+              deploy/shared-hosting/unpack.php > "$RUNNER_TEMP/_deploy-unpack.php"
+          sed "s/__DEPLOY_TOKEN__/$token/" \
+              deploy/shared-hosting/artisan.php > "$RUNNER_TEMP/_deploy-artisan.php"
+
+          # ── Thăm dò trước khi đẩy vài chục MB ─────────────────────────────────────
+          # Cả quy trình đứng trên một giả định mà runner không tự kiểm chứng được:
+          # document root của $API chính là $DEST/public. Sai giả định đó thì lftp vẫn
+          # BÁO THÀNH CÔNG — nó chỉ tạo một cây thư mục mới ở nhánh khác — và lỗi duy
+          # nhất nhìn thấy là trang 404 của hosting ở tận bước sau.
+          #
+          # Nguyên nhân hay gặp: đường dẫn FTP tính theo chỗ tài khoản ĐĂNG NHẬP VÀO,
+          # không theo hệ thống file của máy chủ. Tài khoản bị khoá vào chính thư mục
+          # đó thì `/domains/taida.vn/api` lại thành một nhánh con mới toanh.
+          #
+          # Một file text vài byte trả lời được câu hỏi đó trong vài giây. Không dùng
+          # chính `_deploy-unpack.php` để thăm dò: nó CỐ Ý trả 404 khi token sai, nên
+          # không phân biệt được "sai chỗ" với "đúng chỗ nhưng chưa có token".
+          #
+          # `mkdir -pf` cho lần deploy đầu, khi $DEST/public chưa tồn tại. Cờ `-f` là
+          # bắt buộc: `cmd:fail-exit true` sẽ cho cả job chết vì mkdir trên thư mục đã có.
+          nonce="$(openssl rand -hex 8)"
+          echo "$nonce" > "$RUNNER_TEMP/_deploy-probe.txt"
+
+          lftp <<LFTP
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
+          set net:max-retries 3
+          set net:timeout 15
+          set cmd:fail-exit true
+          open --env-password -u "$FTP_USER" "$FTP_HOST"
+          echo "── Thư mục gốc của tài khoản FTP:"
+          pwd
+          mkdir -pf "$DEST/public"
+          put "$RUNNER_TEMP/_deploy-probe.txt" -o "$DEST/public/_deploy-probe.txt"
+          echo "── Đã ghi file thăm dò:"
+          cls -l "$DEST/public/_deploy-probe.txt"
+          bye
+          LFTP
+
+          got="$(curl -sS --max-time 30 "$API/_deploy-probe.txt" 2>/dev/null | tr -d '[:space:]' || true)"
+          if [ "$got" != "$nonce" ]; then
+            echo "::error::Ghi được file qua FTP nhưng không đọc lại được qua HTTP."
+            echo "Đã ghi vào (đường dẫn FTP): $DEST/public/_deploy-probe.txt"
+            echo "Đã thử đọc ở:               $API/_deploy-probe.txt"
+            echo ""
+            echo "Nghĩa là cây thư mục FTP nhìn thấy KHÔNG phải cây mà web server phục vụ."
+            echo "Thường gặp: tài khoản FTP bị khoá vào một thư mục, nên '/' của nó đã là"
+            echo "thư mục con nào đó — và đường dẫn tuyệt đối lấy từ bảng điều khiển lại"
+            echo "tạo ra một nhánh mới thay vì trỏ vào nhánh có sẵn."
+            echo ""
+            echo "── Cây thư mục theo góc nhìn FTP (đối chiếu với DEPLOY_SITE_PATH đang chạy được):"
+            lftp <<DIAG 2>&1 | head -60 || true
+          set ftp:ssl-force true
+          set ssl:verify-certificate no
+          set net:max-retries 2
+          set net:timeout 15
+          open --env-password -u "$FTP_USER" "$FTP_HOST"
+          echo "[/]"
+          cls -l /
+          echo "[$DEST]"
+          cls -l "$DEST"
+          echo "[$DEST/public]"
+          cls -l "$DEST/public"
+          bye
+          DIAG
+            exit 1
+          fi
+          echo "✓ $DEST/public/ phục vụ tại $API/ — đường dẫn khớp."
+
+          # ── Bản build thật ────────────────────────────────────────────────────────
+          lftp <<LFTP
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
+          set net:max-retries 3
+          set net:timeout 15
+          set cmd:fail-exit true
+          open --env-password -u "$FTP_USER" "$FTP_HOST"
+          rm -f "$DEST/public/_deploy-probe.txt"
+          put "$RUNNER_TEMP/api.zip" -o "$DEST/public/.deploy-payload.zip"
+          put "$RUNNER_TEMP/_deploy-unpack.php" -o "$DEST/public/_deploy-unpack.php"
+          put "$RUNNER_TEMP/_deploy-artisan.php" -o "$DEST/public/_deploy-artisan.php"
+          echo "── Đã ghi vào $DEST/public/:"
+          cls -l "$DEST/public/_deploy-unpack.php" "$DEST/public/_deploy-artisan.php" "$DEST/public/.deploy-payload.zip"
+          bye
+          LFTP
+
+          # Hai lượt gọi HTTP tách rời, không gộp: lượt đầu ghi đè cả vendor/, bootstrap
+          # Laravel ngay trong cùng request đó là nạp autoloader mới đè lên file cũ còn
+          # trong opcache. Lượt sau chạy hoàn toàn trên code mới.
+          #
+          # Lấy cả mã HTTP chứ không chỉ body: 404 của hosting là một trang HTML dài, in
+          # nguyên ra thì lấp mất thông tin thật và vẫn không nói được vì sao.
+          echo "── Giải nén"
+          code="$(curl -sS --max-time 300 -o "$RUNNER_TEMP/unpack.out" -w '%{http_code}' \
+            -X POST -d "token=$token" "$API/_deploy-unpack.php" || echo 000)"
+          out="$(cat "$RUNNER_TEMP/unpack.out")"
+
+          case "$out" in
+            OK*) echo "$out" ;;
+            *)
+              # `cls` ở trên đã chứng minh file NẰM TRÊN FTP. Vậy 404 ở đây chỉ còn một
+              # nghĩa: document root của $API không phải $DEST/public.
+              if [ "$code" = "404" ]; then
+                echo "::error::Upload FTP thành công nhưng $API/_deploy-unpack.php trả 404."
+                echo "::error::Nghĩa là document root của $API KHÔNG phải \$DEPLOY_API_PATH/public."
+                echo "Đang dùng: DEPLOY_API_PATH=$DEST → ghi vào $DEST/public/"
+                echo "Sửa biến DEPLOY_API_PATH thành gốc ứng dụng Laravel (thư mục CHA của public/),"
+                echo "tính theo đường dẫn mà tài khoản FTP nhìn thấy — xem 'Thư mục gốc' in ở trên."
+              else
+                echo "::error::giải nén backend thất bại (HTTP $code)"
+                echo "$out" | head -20
+              fi
+              exit 1
+              ;;
+          esac
+
+          echo "── migrate + hâm cache"
+          out="$(curl -sS --max-time 600 -X POST -d "token=$token" "$API/_deploy-artisan.php")"
+          echo "$out"
+          # Chỉ nhìn DÒNG CUỐI: script in output của từng lệnh artisan trước khi kết
+          # luận, nên tìm "OK" ở bất cứ đâu trong đó là có ngày một dòng output vô
+          # tình chứa hai chữ cái ấy và một lần deploy hỏng được báo là xong.
+          case "$(printf '%s' "$out" | tail -1)" in
+            OK) ;;
+            *) echo "::error::migrate/cache thất bại"; exit 1 ;;
+          esac
+
+      # Chạy cả khi bước trên hỏng — đó đúng là lúc dễ còn sót script nhất. Token chỉ
+      # dùng được một lần và không có ở đâu khác, nhưng một file nhận lệnh qua HTTP nằm
+      # lại trong document root thì để lại vẫn là để lại.
+      - name: Dọn file deploy còn sót
+        if: always()
+        timeout-minutes: 5
+        env:
+          FTP_HOST: ${{ secrets.DEPLOY_FTP_HOST }}
+          FTP_USER: ${{ secrets.DEPLOY_FTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.DEPLOY_FTP_PASSWORD }}
+          DEST: ${{ vars.DEPLOY_API_PATH }}
+        run: |
+          lftp <<LFTP 2>/dev/null || true
+          set ftp:ssl-force true
+          set ssl:verify-certificate no
+          set net:max-retries 3
+          set net:timeout 15
+          open --env-password -u "$FTP_USER" "$FTP_HOST"
+          rm -f "$DEST/public/.deploy-payload.zip"
+          rm -f "$DEST/public/_deploy-unpack.php"
+          rm -f "$DEST/public/_deploy-artisan.php"
+          rm -f "$DEST/public/_deploy-probe.txt"
+          rm -rf "$DEST/public/.deploy-tmp"
+          bye
+          LFTP
+
+      - name: Smoke test
+        env:
+          API: ${{ vars.NUXT_PUBLIC_API_BASE }}
+        run: |
+          set -e
+          # /ping chỉ nói PHP bootstrap được; /settings chạm thật vào database, nên đây
+          # mới là bước bắt được "PHP chạy nhưng MySQL chết" hay migration chưa lên.
+          curl -fsS "$API/api/v1/ping"; echo
+          curl -fsS -o /dev/null "$API/api/v1/settings"
+
+          # `.env` chứa APP_KEY và mật khẩu database. Nó không bao giờ được tải về
+          # bằng trình duyệt — dù document root trỏ vào public/ (Laravel không có
+          # route nào) hay trỏ thẳng vào gốc Laravel (be/.htaccess chặn).
+          code=$(curl -s -o /dev/null -w '%{http_code}' "$API/.env")
+          [ "$code" = "403" ] || [ "$code" = "404" ] \
+            || { echo "::error::$API/.env trả HTTP $code — bí mật đang bị phục vụ công khai"; exit 1; }
+
+          # Script deploy phải biến mất khỏi document root: chúng nhận lệnh qua HTTP nên
+          # còn sót lại là còn một cửa vào, dù token đã hết hạn dùng.
+          for leftover in _deploy-unpack.php _deploy-artisan.php .deploy-payload.zip _deploy-probe.txt; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$API/$leftover")
+            [ "$code" = "404" ] || [ "$code" = "403" ] \
+              || { echo "::error::$leftover vẫn còn trên hosting (HTTP $code)"; exit 1; }
+          done
+
+  # ────────────────────────────────────────────────────────────────────────────
+  # Build tách khỏi `publish` để chỉ bước GHI LÊN HOSTING mới cần test xanh. Bản
+  # build của CI chạy với API sqlite dựng tạm, bản này đọc API thật — hai thứ khác
+  # nhau nên không tái sử dụng được.
+  # ────────────────────────────────────────────────────────────────────────────
   build:
     name: Build
+    needs: [test, api]
+    # `api` bị SKIP khi chỉ build lại nội dung, nên không dùng được điều kiện mặc định
+    # (skip của một `needs` làm skip cả job này). `always()` mở lại, đổi lại phải tự
+    # kiểm hai thứ mà điều kiện mặc định vốn lo:
+    #   - test PHẢI xanh — nếu không `always()` sẽ cho build chạy trên bộ test đỏ;
+    #   - api được phép 'success' hoặc 'skipped', nhưng 'failure' thì dừng: dựng site
+    #     đọc từ một API vừa deploy hỏng là dựng ra nội dung sai.
+    if: |
+      always()
+      && needs.test.result == 'success'
+      && needs.api.result != 'failure'
+      && needs.api.result != 'cancelled'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
 
       - uses: pnpm/action-setup@v6
         with:
-          version: 10
+          version: ${{ env.PNPM_VERSION }}
 
       - uses: actions/setup-node@v7
         with:
-          node-version: '22'
+          node-version: ${{ env.NODE_VERSION }}
           cache: pnpm
           cache-dependency-path: fe/pnpm-lock.yaml
 
@@ -66,6 +373,14 @@ jobs:
       - name: Kiểm tra bản build không nuốt lỗi API
         working-directory: fe
         run: |
+          test -f .output/public/index.html
+          # Vỏ SPA của khu quản trị: `.htaccess` viết lại mọi `/admin/...` về `/200.html`.
+          test -f .output/public/admin/index.html
+          test -f .output/public/200.html
+          # .htaccess là file ẩn và là thứ đầu tiên bị bỏ quên; thiếu nó thì /admin/*
+          # trả 404 và HTML mất cả nén lẫn quy tắc cache.
+          test -f .output/public/.htaccess
+
           broken="$(grep -rl 'NuxtError' .output/public --include='*.html' || true)"
           [ -z "$broken" ] && { echo "Không trang nào kèm lỗi dữ liệu."; exit 0; }
 
@@ -94,7 +409,7 @@ jobs:
 
   publish:
     name: Upload
-    needs: [test, build]
+    needs: build
     runs-on: ubuntu-latest
     environment: production
     steps:
@@ -156,10 +471,16 @@ jobs:
 
           # Token dùng đúng một lần, sinh ở đây nên không có trong git, và script
           # nhận nó cũng tự xoá mình ngay sau khi chạy xong.
+          #
+          # FE: script nằm ngay trong document root (ROOT='.') và PRUNE bật — trang
+          # cũ còn sót lại là trang VẪN ĐƯỢC PHỤC VỤ, nên đổi slug mà không dọn thì
+          # cả hai địa chỉ cùng sống.
           token="$(openssl rand -hex 32)"
           echo "::add-mask::$token"
-          sed "s/__DEPLOY_TOKEN__/$token/" deploy/shared-hosting/unpack.php \
-            > "$RUNNER_TEMP/_deploy-unpack.php"
+          sed -e "s/__DEPLOY_TOKEN__/$token/" \
+              -e "s|__DEPLOY_ROOT__|.|" \
+              -e "s/__DEPLOY_PRUNE__/1/" \
+              deploy/shared-hosting/unpack.php > "$RUNNER_TEMP/_deploy-unpack.php"
 
           lftp <<LFTP
           set ftp:ssl-force true
@@ -169,7 +490,7 @@ jobs:
           set net:timeout 15
           set cmd:fail-exit true
           open --env-password -u "$FTP_USER" "$FTP_HOST"
-          put "$RUNNER_TEMP/site.zip" -o "$DEST/.deploy-site.zip"
+          put "$RUNNER_TEMP/site.zip" -o "$DEST/.deploy-payload.zip"
           put "$RUNNER_TEMP/_deploy-unpack.php" -o "$DEST/_deploy-unpack.php"
           bye
           LFTP
@@ -242,8 +563,8 @@ jobs:
           set net:max-retries 3
           set net:timeout 15
           open --env-password -u "$FTP_USER" "$FTP_HOST"
-          cls -1 "$DEST/.deploy-site.zip" "$DEST/_deploy-unpack.php"
-          rm -f "$DEST/.deploy-site.zip"
+          cls -1 "$DEST/.deploy-payload.zip" "$DEST/_deploy-unpack.php"
+          rm -f "$DEST/.deploy-payload.zip"
           rm -f "$DEST/_deploy-unpack.php"
           rm -rf "$DEST/.deploy-tmp"
           bye
@@ -275,7 +596,7 @@ jobs:
 
           # Script giải nén phải biến mất khỏi document root. Nó nhận lệnh qua
           # HTTP nên còn sót lại là còn một cửa vào, dù token đã hết hạn dùng.
-          for leftover in _deploy-unpack.php .deploy-site.zip; do
+          for leftover in _deploy-unpack.php .deploy-payload.zip; do
             code=$(curl -s -o /dev/null -w '%{http_code}' "$site/$leftover")
             [ "$code" = "404" ] || [ "$code" = "403" ] \
               || { echo "::error::$leftover vẫn còn trên hosting (HTTP $code)"; exit 1; }
