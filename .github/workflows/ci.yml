@@ -49,6 +49,12 @@ jobs:
         working-directory: be
         run: vendor/bin/pint --test
 
+      # Script giải nén chạy trên hosting, ngoài tầm với của mọi test. Nó vỡ thì
+      # deploy vẫn xong — chỉ lặng lẽ rơi về đường lui đẩy từng file và chậm gấp
+      # ba mươi lần. Một lượt `php -l` là thứ duy nhất bắt được chuyện đó sớm.
+      - name: Check the deploy unpacker
+        run: php -l deploy/shared-hosting/unpack.php
+
       - name: Run tests
         working-directory: be
         run: php artisan test

@@ -7,8 +7,8 @@ on:
   push:
     branches: [main]
 
-# Hai lần publish chồng nhau sẽ ghi đè lẫn nhau giữa chừng khi upload, và
-# tranh nhau ghi file trạng thái đồng bộ trên hosting.
+# Hai lần publish chồng nhau sẽ ghi đè lẫn nhau giữa chừng: bản zip của lần này
+# đè lên bản zip lần kia trước khi nó kịp giải nén.
 concurrency:
   group: publish-production
   cancel-in-progress: false
@@ -17,11 +17,13 @@ jobs:
   test:
     uses: ./.github/workflows/ci.yml
 
-  publish:
-    name: Build & upload
-    needs: test
+  # Tách khỏi `publish` để chạy song song với `test`. Trước đây build phải xếp
+  # sau toàn bộ test suite dù nó không dùng gì từ đó — bản build của CI chạy với
+  # API sqlite dựng tạm, bản này đọc API thật, hai thứ khác nhau nên không tái
+  # sử dụng được. Chỉ bước ghi lên hosting mới thật sự cần test xanh.
+  build:
+    name: Build
     runs-on: ubuntu-latest
-    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -49,21 +51,53 @@ jobs:
           pnpm install --frozen-lockfile
           pnpm generate
 
-      # FTP chứ không phải rsync/SSH: shared hosting ở đây không mở SSH, nên
-      # đây là kênh ghi file duy nhất có sẵn.
+      # Site đi qua FTP dưới dạng đúng một file. Dấu `.` là toàn bộ nội dung bên
+      # trong thư mục, và `zip` đẩy cả dotfile — `.htaccess` không bị bỏ quên như
+      # khi kéo tay bằng FileZilla.
+      - name: Nén thành một file
+        working-directory: fe/.output/public
+        run: |
+          zip -q -r -X -9 "$RUNNER_TEMP/site.zip" .
+          echo "$(find . -type f | wc -l) file → $(du -h "$RUNNER_TEMP/site.zip" | cut -f1)"
+
+      # Truyền zip nguyên khối giữa hai job: artifact của 813 file rời mất hàng
+      # chục giây, của một file thì không.
+      - uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: ${{ runner.temp }}/site.zip
+          retention-days: 1
+          compression-level: 0
+
+  publish:
+    name: Upload
+    needs: [test, build]
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: ${{ runner.temp }}
+
+      # FTP chứ không phải rsync/SSH: shared hosting ở đây không mở SSH, nên đây
+      # là kênh ghi file duy nhất có sẵn.
       #
-      # `lftp --parallel` thay cho SamKirkland/FTP-Deploy-Action vì action đó
-      # đẩy tuần tự từng file một: đo trên run 32118528331 là 829 file, trung
-      # vị 1.35s/file gần như không đổi theo kích thước — 9.41 MB mất 24 phút,
-      # tức 6.6 KB/s. Nút thắt là round-trip FTP mỗi file, không phải băng
-      # thông, nên thứ duy nhất chữa được là mở nhiều kết nối song song.
+      # Đẩy đúng hai file thay vì cả site. Lịch sử của bước này là một chuỗi bài
+      # học về cùng một nút thắt:
       #
-      # Không cần đồng bộ incremental nữa: mỗi lần build Nuxt sinh `buildId`
-      # mới và `prerenderedAt` mới, nên 514/831 file đổi nội dung ngay cả khi
-      # nội dung site không đổi. Đẩy song song toàn bộ vừa đơn giản hơn vừa
-      # nhanh hơn incremental tuần tự, và bỏ luôn được
-      # `.ftp-deploy-sync-state.json` — file liệt kê mọi đường dẫn của site,
-      # nằm ngay trong document root.
+      #   SamKirkland/FTP-Deploy-Action, tuần tự  →  24 phút  (run 32118528331)
+      #   lftp mirror --parallel=5                →   8 phút  (run 32129297097)
+      #   zip + giải nén tại chỗ                  →  ~15 giây
+      #
+      # Nút thắt chưa bao giờ là băng thông: 10 MB trong 8 phút là 20 KB/s. Site
+      # có 813 file (mỗi trang sinh thêm bản `.br` và `.gz` nên số file gấp ba),
+      # trung bình 12 KB, còn hosting ở Việt Nam và runner ở Mỹ nên RTT ~250ms.
+      # Mỗi file tốn chục lượt round-trip: CWD, DELE, PASV, mở kết nối data, bắt
+      # tay TLS riêng cho từng file, STOR, đóng. Nhân 813 lên là ra 8 phút, và
+      # chạy song song chỉ chia nhỏ chứ không bỏ được chi phí đó.
       #
       # `ftp:ssl-force` là FTP over explicit TLS trên cổng 21 — cùng cổng, cùng
       # tài khoản như FTP thường, chỉ khác là mật khẩu và nội dung được mã hoá.
@@ -73,25 +107,37 @@ jobs:
       # Mật khẩu đi qua biến LFTP_PASSWORD chứ không nằm trên dòng lệnh, nên
       # không lộ trong `ps` và không vỡ nếu có ký tự đặc biệt.
       #
-      # `net:max-retries` là bắt buộc chứ không phải cho đẹp: mặc định lftp
-      # retry vô hạn, sai host hoặc sai mật khẩu là job treo tới giới hạn 6
-      # tiếng. `timeout-minutes` là lưới an toàn thứ hai.
+      # `net:max-retries` là bắt buộc chứ không phải cho đẹp: mặc định lftp retry
+      # vô hạn, sai host hoặc sai mật khẩu là job treo tới giới hạn 6 tiếng.
+      # `timeout-minutes` là lưới an toàn thứ hai.
       #
-      # `--delete` dọn file build cũ. Hai thư mục loại trừ là do hosting quản,
-      # không do build sinh ra — xoá `.well-known/` là mất gia hạn SSL.
-      #
-      # Dấu `/` cuối đường dẫn nguồn là bắt buộc: copy nội dung bên trong thư
-      # mục, không phải cả thư mục. lftp đẩy dotfile mặc định, nên `.htaccess`
-      # không bị bỏ quên như khi kéo tay bằng FileZilla.
+      # Zip mang tên bắt đầu bằng dấu chấm: `.htaccess` trên hosting chặn mọi
+      # file như vậy, nên trong mấy giây nó nằm đó cũng không ai tải về được.
       - name: Upload
-        timeout-minutes: 15
+        id: upload
+        timeout-minutes: 10
         env:
           FTP_HOST: ${{ secrets.DEPLOY_FTP_HOST }}
           FTP_USER: ${{ secrets.DEPLOY_FTP_USER }}
           LFTP_PASSWORD: ${{ secrets.DEPLOY_FTP_PASSWORD }}
           DEST: ${{ vars.DEPLOY_SITE_PATH }}
+          SITE: ${{ vars.NUXT_PUBLIC_SITE_URL }}
         run: |
-          sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+          set -euo pipefail
+
+          # Danh sách gói của runner đã có sẵn lftp; `apt-get update` chỉ để làm
+          # mới nó, tốn 45 giây và hầu như luôn thừa. Vẫn giữ làm đường lui cho
+          # ngày danh sách cũ tới mức install trượt.
+          sudo apt-get install -y -qq lftp \
+            || { sudo apt-get update -qq && sudo apt-get install -y -qq lftp; }
+
+          # Token dùng đúng một lần, sinh ở đây nên không có trong git, và script
+          # nhận nó cũng tự xoá mình ngay sau khi chạy xong.
+          token="$(openssl rand -hex 32)"
+          echo "::add-mask::$token"
+          sed "s/__DEPLOY_TOKEN__/$token/" deploy/shared-hosting/unpack.php \
+            > "$RUNNER_TEMP/_deploy-unpack.php"
+
           lftp <<LFTP
           set ftp:ssl-force true
           set ftp:ssl-protect-data true
@@ -100,9 +146,90 @@ jobs:
           set net:timeout 15
           set cmd:fail-exit true
           open --env-password -u "$FTP_USER" "$FTP_HOST"
-          mirror --reverse --delete --parallel=5 --verbose --exclude '^\.well-known/' --exclude '^cgi-bin/' fe/.output/public/ "$DEST/"
+          put "$RUNNER_TEMP/site.zip" -o "$DEST/.deploy-site.zip"
+          put "$RUNNER_TEMP/_deploy-unpack.php" -o "$DEST/_deploy-unpack.php"
           bye
           LFTP
+
+          # Giải nén xong site mới đổi, nên đây là điểm cắt: trước lệnh này
+          # hosting vẫn phục vụ bản cũ nguyên vẹn.
+          out="$(curl -sS --max-time 300 -X POST -d "token=$token" \
+            "$SITE/_deploy-unpack.php" || true)"
+          echo "$out"
+
+          case "$out" in
+            OK*) echo "unpacked=yes" >> "$GITHUB_OUTPUT" ;;
+            *)   echo "unpacked=no" >> "$GITHUB_OUTPUT"
+                 echo "::warning::Giải nén tại chỗ không chạy được, quay về đẩy từng file qua FTP" ;;
+          esac
+
+      # Đường lui, chỉ chạy khi bước trên không giải nén được — hosting tắt PHP ở
+      # thư mục này, thiếu ZipArchive, hay bất cứ lý do gì khác. Chậm hơn nhiều
+      # nhưng không phụ thuộc thứ gì ngoài chính FTP, nên site vẫn lên được.
+      - name: Upload (đường lui, đẩy từng file)
+        if: steps.upload.outputs.unpacked != 'yes'
+        timeout-minutes: 20
+        env:
+          FTP_HOST: ${{ secrets.DEPLOY_FTP_HOST }}
+          FTP_USER: ${{ secrets.DEPLOY_FTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.DEPLOY_FTP_PASSWORD }}
+          DEST: ${{ vars.DEPLOY_SITE_PATH }}
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/public"
+          unzip -q "$RUNNER_TEMP/site.zip" -d "$RUNNER_TEMP/public"
+
+          # `--delete` dọn file build cũ. Hai thư mục loại trừ là do hosting quản,
+          # không do build sinh ra — xoá `.well-known/` là mất gia hạn SSL. Zip và
+          # script giải nén cũng phải loại trừ, vì bước dọn ở dưới mới xoá chúng.
+          lftp <<LFTP
+          set ftp:ssl-force true
+          set ftp:ssl-protect-data true
+          set ssl:verify-certificate no
+          set net:max-retries 3
+          set net:timeout 15
+          set cmd:fail-exit true
+          open --env-password -u "$FTP_USER" "$FTP_HOST"
+          mirror --reverse --delete --parallel=5 --verbose --exclude '^\.well-known/' --exclude '^cgi-bin/' --exclude '^\.deploy-' --exclude '^_deploy-unpack\.php$' "$RUNNER_TEMP/public/" "$DEST/"
+          bye
+          LFTP
+
+      # Script giải nén tự xoá ở dòng cuối của chính nó, nên sau một lần chạy
+      # thành công ở đây không còn gì. Nhưng nếu nó chết giữa chừng — hết dung
+      # lượng, PHP timeout, job bị huỷ — thì một script nhận lệnh qua HTTP sẽ nằm
+      # lại trong document root. Token chỉ dùng được một lần và không có ở đâu
+      # khác, nhưng để lại thì vẫn là để lại. `always()` để nó chạy cả khi bước
+      # trên hỏng, vì đó đúng là lúc dễ còn sót nhất.
+      - name: Dọn file deploy còn sót
+        if: always()
+        timeout-minutes: 5
+        env:
+          FTP_HOST: ${{ secrets.DEPLOY_FTP_HOST }}
+          FTP_USER: ${{ secrets.DEPLOY_FTP_USER }}
+          LFTP_PASSWORD: ${{ secrets.DEPLOY_FTP_PASSWORD }}
+          DEST: ${{ vars.DEPLOY_SITE_PATH }}
+          UNPACKED: ${{ steps.upload.outputs.unpacked }}
+        run: |
+          # `cls` trước `rm` chỉ để biết có phải dọn thật hay không: sau một lần
+          # giải nén thành công mà vẫn còn file nghĩa là bước tự xoá đã trượt, và
+          # đó là thứ cần biết chứ không nên im lặng dọn hộ.
+          leftover="$(lftp <<LFTP 2>/dev/null || true
+          set ftp:ssl-force true
+          set ssl:verify-certificate no
+          set net:max-retries 3
+          set net:timeout 15
+          open --env-password -u "$FTP_USER" "$FTP_HOST"
+          cls -1 "$DEST/.deploy-site.zip" "$DEST/_deploy-unpack.php"
+          rm -f "$DEST/.deploy-site.zip"
+          rm -f "$DEST/_deploy-unpack.php"
+          rm -rf "$DEST/.deploy-tmp"
+          bye
+          LFTP
+          )"
+
+          if [ -n "$leftover" ] && [ "$UNPACKED" = "yes" ]; then
+            echo "::warning::unpack.php giải nén xong nhưng không tự xoá được, đã dọn ở đây: $leftover"
+          fi
 
       - name: Smoke test
         run: |
@@ -122,3 +249,11 @@ jobs:
           enc=$(curl -fsS -o /dev/null -D - -H 'Accept-Encoding: gzip, br' "$site/" | grep -i '^content-encoding:' || true)
           echo "Home page $enc"
           echo "$enc" | grep -qiE 'gzip|br' || { echo "::error::HTML đang được trả về không nén"; exit 1; }
+
+          # Script giải nén phải biến mất khỏi document root. Nó nhận lệnh qua
+          # HTTP nên còn sót lại là còn một cửa vào, dù token đã hết hạn dùng.
+          for leftover in _deploy-unpack.php .deploy-site.zip; do
+            code=$(curl -s -o /dev/null -w '%{http_code}' "$site/$leftover")
+            [ "$code" = "404" ] || [ "$code" = "403" ] \
+              || { echo "::error::$leftover vẫn còn trên hosting (HTTP $code)"; exit 1; }
+          done

@@ -23,6 +23,17 @@ const { data: catalogues } = await useAsyncData(
   { watch: [locale] },
 )
 
+/**
+ * The two editions, for the switcher inside the burger menu. Named in their own
+ * language, as language names are written, so neither row needs translating —
+ * the utility bar's picker, which is what carries this on desktop, does the
+ * same. Kept in the same order there and here.
+ */
+const editions = [
+  { locale: 'vi' as const, lang: 'Tiếng Việt' },
+  { locale: 'en' as const, lang: 'English' },
+]
+
 /** Which mega panel is open on desktop; null when none. */
 const openPanel = ref<'services' | 'industries' | null>(null)
 const mobileOpen = ref(false)
@@ -64,18 +75,22 @@ onClickOutside(header, () => (openPanel.value = null))
   -->
   <header ref="header" class="sticky top-0 z-50 bg-brand-600 text-white">
     <!--
-      The bar carries the logo lockup, which is ~67 px on its own, so a 64 px
-      row left it looking wedged in. 112 px on desktop puts about a fifth of
-      the height as clear space above and below it — the proportion corporate
+      The bar carries the logo lockup, which is ~69 px on its own from sm, so a
+      64 px row left it looking wedged in. 112 px on desktop puts about a fifth
+      of the height as clear space above and below it — the proportion corporate
       bars of this kind hold — while staying short enough to keep sticking to
       the top without eating the viewport.
+
+      A phone gets 64 px back: the lockup drops to its compact size there (~42
+      px, the slogan being hidden), and holding the row at 80 px would have left
+      it swimming while costing a sticky bar's worth of a short viewport.
     -->
-    <div class="mx-auto flex h-20 max-w-8xl items-center gap-4 px-4 sm:px-6 lg:h-28 lg:gap-6 lg:px-8 xl:px-12">
+    <div class="mx-auto flex h-16 max-w-8xl items-center gap-4 px-4 sm:h-20 sm:px-6 lg:h-28 lg:gap-6 lg:px-8 xl:px-12">
       <SiteLogo :logo="chrome?.settings.logo" />
 
       <!--
         Pushed to the right rather than sitting against the logo: the lockup
-        now runs to ~200 px and the nav starting right beside it made the left
+        now runs to ~210 px and the nav starting right beside it made the left
         half of the bar dense and the right half empty. Ranged right, the nav
         and the contact controls read as one group.
       -->
@@ -120,7 +135,14 @@ onClickOutside(header, () => (openPanel.value = null))
         </NuxtLink>
       </nav>
 
-      <div class="flex items-center gap-4">
+      <!--
+        `ml-auto` up to md, then the nav takes over: the nav above is what
+        absorbs the free space and ranges this group right, but it is hidden
+        below md, which left the controls sitting against the logo with the
+        whole right half of a phone bar empty. Only one of the two may claim the
+        free space at a time, hence `md:ml-0`.
+      -->
+      <div class="ml-auto flex items-center gap-4 md:ml-0">
         <a
           v-if="chrome?.settings.hotline"
           :href="`tel:${chrome.settings.hotline.replace(/\s/g, '')}`"
@@ -168,30 +190,6 @@ onClickOutside(header, () => (openPanel.value = null))
         >
           <UIcon name="i-lucide-search" class="size-6" />
         </NuxtLink>
-
-        <!--
-          SwitchLocalePathLink, not NuxtLink + switchLocalePath(): on a detail
-          page the target slug is only known once the page itself has resolved,
-          and a plain link is rendered before that. This component leaves a
-          marker that i18n rewrites after the render finishes, which is what
-          makes the switcher survive prerendering.
-
-          Mobile only: from md up the utility bar carries the region picker,
-          and two switchers stacked one above the other would just be noise.
-        -->
-        <div class="flex items-center gap-1 text-xs font-medium md:hidden">
-          <SwitchLocalePathLink
-            locale="vi"
-            class="px-1"
-            :class="locale === 'vi' ? 'text-white underline underline-offset-4' : 'text-brand-100 hover:text-white'"
-          >VI</SwitchLocalePathLink>
-          <span class="text-brand-300">|</span>
-          <SwitchLocalePathLink
-            locale="en"
-            class="px-1"
-            :class="locale === 'en' ? 'text-white underline underline-offset-4' : 'text-brand-100 hover:text-white'"
-          >EN</SwitchLocalePathLink>
-        </div>
 
         <button
           type="button"
@@ -277,6 +275,39 @@ onClickOutside(header, () => (openPanel.value = null))
         >
           {{ link.label }}
         </NuxtLink>
+
+        <!--
+          The edition switcher, which the utility bar carries from md up. It
+          used to sit in the bar as a VI|EN pair beside the burger; between it,
+          the search icon and the menu button the controls needed ~137 px, and
+          with the lockup they overflowed a 320–390 px bar. A drawer row can
+          afford the language's own name, which reads better than a two-letter
+          code anyway.
+
+          SwitchLocalePathLink, not NuxtLink + switchLocalePath(): on a detail
+          page the target slug is only known once the page itself has resolved,
+          and a plain link is rendered before that. This component leaves a
+          marker that i18n rewrites after the render finishes, which is what
+          makes the switcher survive prerendering.
+        -->
+        <div class="mt-2 border-t border-white/15 pt-2">
+          <SwitchLocalePathLink
+            v-for="edition in editions"
+            :key="edition.locale"
+            :locale="edition.locale"
+            class="flex items-center gap-3 py-2.5 text-base"
+            :class="locale === edition.locale ? 'font-semibold text-white' : 'text-brand-50'"
+          >
+            <SiteFlagVn v-if="edition.locale === 'vi'" :title="t('utility.vietnam')" />
+            <UIcon v-else name="i-lucide-globe" class="size-5 text-brand-200" />
+            {{ edition.lang }}
+            <UIcon
+              v-if="locale === edition.locale"
+              name="i-lucide-check"
+              class="ml-auto size-4 text-accent-400"
+            />
+          </SwitchLocalePathLink>
+        </div>
 
         <!-- The utility bar is hidden at this width, so its links live here instead. -->
         <div v-if="chrome?.utility.length" class="mt-2 border-t border-white/15 pt-2">

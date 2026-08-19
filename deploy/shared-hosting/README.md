@@ -190,16 +190,27 @@ Tạo tài khoản FTP riêng cho việc deploy (cPanel → FTP Accounts), khoá
 thư mục site và đặt mật khẩu riêng — mật khẩu này nằm trong GitHub, không nên là
 mật khẩu đăng nhập cPanel.
 
-**Lần chạy đầu chậm.** Action đẩy toàn bộ ~9 MB qua FTP, mà `compressPublicAssets`
-sinh thêm bản `.gz` và `.br` cho mỗi asset nên số file gấp ba — mất vài phút là
-bình thường. Từ lần thứ hai nó đọc `.ftp-deploy-sync-state.json` để lại trên
-hosting và chỉ đẩy phần đã đổi, thường dưới một phút.
+**Site đi qua FTP dưới dạng một file, không phải 813 file.** `compressPublicAssets`
+sinh thêm bản `.gz` và `.br` cho mỗi trang nên số file gấp ba, mà hosting ở Việt
+Nam còn runner của GitHub ở Mỹ — RTT khoảng 250ms. Đẩy từng file thì toàn bộ thời
+gian nằm ở round-trip chứ không phải băng thông: 10 MB mất 8 phút, tức 20 KB/s.
 
-File trạng thái đó cũng là thứ thay cho `rsync --delete`: trang bị xoá trong CMS
-sẽ biến mất khỏi hosting ở lần build kế tiếp. Nếu nó bị xoá hoặc lệch (ví dụ có
-người upload tay đè lên), chạy lại workflow một lần với `dangerous-clean-slate:
-true` để dọn sạch thư mục rồi đẩy lại từ đầu — nhớ bỏ ra ngay sau đó, vì nó xoá
-**mọi** thứ trong `DEPLOY_SITE_PATH` trước khi upload.
+Nên workflow nén cả site thành một `.zip` 5 MB, đẩy một lần, rồi gọi
+`deploy/shared-hosting/unpack.php` giải nén ngay trên hosting. Toàn bộ bước upload
+còn khoảng 15 giây.
+
+Script giải nén **không** nằm sẵn trên hosting: nó được upload cùng bản build, nhận
+một token sinh ngẫu nhiên cho đúng lần chạy đó, và tự xoá mình ở dòng cuối. Smoke
+test kiểm tra lại rằng nó đã biến mất.
+
+Nó cũng là thứ thay cho `rsync --delete`: file có trên hosting mà không có trong
+zip thì bị xoá, nên trang bị xoá trong CMS sẽ biến mất ở lần build kế tiếp.
+`.well-known/` và `cgi-bin/` được giữ lại vì do hosting quản chứ không do build
+sinh ra — xoá `.well-known/` là mất gia hạn SSL.
+
+Nếu hosting không chạy được PHP ở thư mục đó (hoặc thiếu cả `ZipArchive` lẫn
+`PharData`), workflow tự quay về đẩy từng file bằng `lftp mirror` và ghi một
+warning. Site vẫn lên, chỉ chậm — không cần sửa gì để nó chạy được.
 
 Làm tay thì vẫn là:
 

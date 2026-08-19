@@ -5,10 +5,10 @@ Options -Indexes -MultiViews
 DirectoryIndex index.html
 
 # Nothing whose name starts with a dot is meant to be fetched by URL. The
-# generated site has no such file, but the FTP deploy leaves its sync manifest
-# (`.ftp-deploy-sync-state.json`) in the document root, and that manifest lists
-# every path on the site. Apache serves dotfiles by default, so this has to be
-# said out loud.
+# generated site has no such file, but the deploy puts one there on purpose:
+# the whole site arrives as a single `.deploy-site.zip` and sits in the document
+# root for the few seconds it takes to unpack. Apache serves dotfiles by default,
+# so this has to be said out loud — it is what keeps that window closed.
 #
 # Directories are unaffected — FilesMatch tests the basename, so ACME's
 # `.well-known/acme-challenge/<token>` still resolves and SSL renewal keeps
