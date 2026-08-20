@@ -3,7 +3,7 @@ import type { Envelope, Post, PostDetail } from '~/types/api'
 
 useDetailPageKey()
 
-const { t, locale } = useI18n()
+const { t, localeProperties } = useI18n()
 const localePath = useLocalePath()
 const route = useRoute()
 
@@ -23,8 +23,12 @@ const { data: related } = await useApiData<Envelope<Post[]>>(
   () => `/posts/${route.params.slug}/related`,
 )
 
+// Thẻ ngôn ngữ lấy thẳng từ locale đang bật (`vi-VN`, `en-US`, `zh-Hans`) thay
+// vì một bảng if/else: thêm ngôn ngữ thứ tư thì chỗ này không phải sửa nữa, và
+// Intl tự lo phần định dạng — ngày tiếng Trung là "2026年8月19日", không phải
+// "19 tháng 8, 2026" viết bằng chữ Hán.
 const publishedOn = computed(() => (post.value.publishedAt
-  ? new Date(post.value.publishedAt).toLocaleDateString(locale.value === 'vi' ? 'vi-VN' : 'en-US', {
+  ? new Date(post.value.publishedAt).toLocaleDateString(localeProperties.value.language, {
       day: '2-digit', month: 'long', year: 'numeric',
     })
   : null))

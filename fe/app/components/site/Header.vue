@@ -24,13 +24,14 @@ const { data: catalogues } = await useAsyncData(
 )
 
 /**
- * The two editions, for the switcher inside the burger menu. Named in their own
- * language, as language names are written, so neither row needs translating —
- * the utility bar's picker, which is what carries this on desktop, does the
- * same. Kept in the same order there and here.
+ * The editions, for the switcher inside the burger menu. Named in their own
+ * language, as language names are written, so no row needs translating — the
+ * utility bar's picker, which is what carries this on desktop, does the same.
+ * Kept in the same order there and here.
  */
 const editions = [
   { locale: 'vi' as const, lang: 'Tiếng Việt' },
+  { locale: 'zh' as const, lang: '中文' },
   { locale: 'en' as const, lang: 'English' },
 ]
 
@@ -299,8 +300,13 @@ v-for="group in ([
             class="flex items-center gap-3 py-2.5 text-base"
             :class="locale === edition.locale ? 'font-semibold text-white' : 'text-brand-50'"
           >
-            <SiteFlagVn v-if="edition.locale === 'vi'" :title="t('utility.vietnam')" />
-            <UIcon v-else name="i-lucide-globe" class="size-5 text-brand-200" />
+            <!-- One box for every mark, so the labels line up; see the utility bar's own note. -->
+            <span class="flex h-6 w-[1.875rem] shrink-0 items-center justify-center">
+              <SiteFlagVn v-if="edition.locale === 'vi'" :title="t('utility.vietnam')" />
+              <SiteFlagCn v-else-if="edition.locale === 'zh'" :title="t('utility.china')" />
+              <!-- The English edition is the global one, so it keeps the globe rather than a country's flag. -->
+              <UIcon v-else name="i-lucide-globe" class="size-6 text-brand-200" />
+            </span>
             {{ edition.lang }}
             <UIcon
               v-if="locale === edition.locale"

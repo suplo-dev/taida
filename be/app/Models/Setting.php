@@ -14,7 +14,17 @@ class Setting extends Model
      *
      * @var list<string>
      */
-    public const MEDIA_KEYS = ['logo'];
+    public const MEDIA_KEYS = ['logo', 'heroImage'];
+
+    /**
+     * Địa chỉ video nền của hero. Là URL chứ không phải media id: file mp4 vài
+     * chục MB không thuộc về thư viện ảnh — MediaRequest chặn ở 8 MB — và shared
+     * hosting phát video thẳng thì vừa tốn băng thông vừa không có range request
+     * tử tế. Trỏ sang CDN hoặc nơi đang lưu sẵn.
+     *
+     * `heroImage` vẫn được dùng làm ảnh poster của video, nên đặt cả hai là hợp lệ.
+     */
+    public const URL_KEYS = ['heroVideo'];
 
     protected $primaryKey = 'key';
 

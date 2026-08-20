@@ -101,6 +101,36 @@ class ServiceApiTest extends TestCase
         $this->getJson("/api/v1/services/{$englishSlug}?locale=en")->assertOk();
     }
 
+    /**
+     * The static build crawls its own links: a listing under an untranslated
+     * locale falls back to the primary name AND the primary slug, so the link
+     * it renders has to resolve. Before this, one untranslated record 404ed
+     * mid-crawl and failed the publish for every language at once.
+     */
+    public function test_show_falls_back_to_the_primary_slug_when_the_locale_has_no_translation(): void
+    {
+        $service = Service::factory()->create();
+        $service->translations()->where('locale', 'zh')->delete();
+        $vi = $service->translations()->where('locale', 'vi')->sole();
+
+        $this->getJson("/api/v1/services/{$vi->slug}?locale=zh")
+            ->assertOk()
+            ->assertJsonPath('data.id', $service->id)
+            ->assertJsonPath('data.name', $vi->name);
+    }
+
+    /**
+     * The fallback must not widen into "any locale's slug matches anywhere":
+     * a record that HAS the locale keeps exactly one address in it.
+     */
+    public function test_the_fallback_does_not_apply_once_the_locale_is_translated(): void
+    {
+        $service = Service::factory()->create();
+        $vi = $service->translations()->where('locale', 'vi')->sole();
+
+        $this->getJson("/api/v1/services/{$vi->slug}?locale=zh")->assertNotFound();
+    }
+
     public function test_show_hides_a_draft_service(): void
     {
         $service = Service::factory()->draft()->create();

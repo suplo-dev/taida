@@ -374,6 +374,8 @@ jobs:
         working-directory: fe
         run: |
           test -f .output/public/index.html
+          test -f .output/public/en/index.html
+          test -f .output/public/zh/index.html
           # Vỏ SPA của khu quản trị: `.htaccess` viết lại mọi `/admin/...` về `/200.html`.
           test -f .output/public/admin/index.html
           test -f .output/public/200.html
@@ -581,6 +583,7 @@ jobs:
           site="${{ vars.NUXT_PUBLIC_SITE_URL }}"
           curl -fsS -o /dev/null "$site/"
           curl -fsS -o /dev/null "$site/en/"
+          curl -fsS -o /dev/null "$site/zh/"
           curl -fsS -o /dev/null "$site/sitemap.xml"
 
           # Trang con của admin chỉ tồn tại trong trình duyệt; nếu trả 404 nghĩa

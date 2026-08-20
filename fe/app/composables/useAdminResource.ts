@@ -1,6 +1,6 @@
 import type { Envelope, Locale } from '~/types/api'
 
-export const SUPPORTED_LOCALES: Locale[] = ['vi', 'en']
+export const SUPPORTED_LOCALES: Locale[] = ['vi', 'en', 'zh']
 
 /** The locale content must always be authored in, mirroring the API. */
 export const PRIMARY_LOCALE: Locale = 'vi'
@@ -8,6 +8,7 @@ export const PRIMARY_LOCALE: Locale = 'vi'
 export const LOCALE_LABELS: Record<Locale, string> = {
   vi: 'Tiếng Việt',
   en: 'English',
+  zh: '中文',
 }
 
 /**

@@ -24,6 +24,8 @@ const { data: home } = await useAsyncData(
 const hero = computed(() => ({
   title: chrome.value?.settings.hero?.title ?? 'Total Quality. Assured.',
   subtitle: chrome.value?.settings.hero?.subtitle ?? '',
+  image: chrome.value?.settings.heroImage ?? null,
+  video: chrome.value?.settings.heroVideo ?? null,
 }))
 
 /** The two highest-ranked services double as the featured solutions band. */
@@ -37,40 +39,32 @@ useSeo(() => ({
 
 <template>
   <div>
-    <!-- 1. Hero -->
-    <section class="relative isolate overflow-hidden bg-cream-300">
-      <div class="absolute inset-0 opacity-25" aria-hidden="true">
-        <div class="absolute -right-24 top-1/2 size-[32rem] -translate-y-1/2 rounded-full bg-brand-300 blur-3xl" />
-      </div>
+    <!-- 1. Hero — ảnh/video nền chọn ở CMS → Cấu hình; xem SiteHomeHero. -->
+    <SiteHomeHero
+      :title="hero.title"
+      :subtitle="hero.subtitle"
+      :image="hero.image"
+      :video="hero.video"
+    >
+      <template #actions>
+        <NuxtLink
+          :to="localePath('dich-vu')"
+          class="inline-flex items-center gap-2 rounded bg-brand-600 px-6 py-3 font-semibold text-white transition hover:bg-brand-700"
+        >
+          {{ t('home.exploreServices') }}
+          <UIcon name="i-lucide-arrow-right" class="size-5" />
+        </NuxtLink>
 
-      <div class="relative mx-auto max-w-8xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32 xl:px-12">
-        <h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-primary-900 sm:text-5xl lg:text-6xl">
-          {{ hero.title }}
-        </h1>
-        <p v-if="hero.subtitle" class="mt-6 max-w-2xl text-lg leading-relaxed text-primary-500">
-          {{ hero.subtitle }}
-        </p>
-
-        <div class="mt-10 flex flex-wrap items-center gap-4">
-          <NuxtLink
-            :to="localePath('dich-vu')"
-            class="inline-flex items-center gap-2 rounded bg-brand-600 px-6 py-3 font-semibold text-white transition hover:bg-brand-700"
-          >
-            {{ t('home.exploreServices') }}
-            <UIcon name="i-lucide-arrow-right" class="size-5" />
-          </NuxtLink>
-
-          <a
-            v-if="chrome?.settings.hotline"
-            :href="`tel:${chrome.settings.hotline.replace(/\s/g, '')}`"
-            class="inline-flex items-center gap-2 rounded border border-primary-300 px-6 py-3 font-medium text-primary-800 transition hover:border-primary-600 hover:bg-primary-600 hover:text-white"
-          >
-            <UIcon name="i-lucide-phone" class="size-5" />
-            {{ chrome.settings.hotline }}
-          </a>
-        </div>
-      </div>
-    </section>
+        <a
+          v-if="chrome?.settings.hotline"
+          :href="`tel:${chrome.settings.hotline.replace(/\s/g, '')}`"
+          class="inline-flex items-center gap-2 rounded border border-primary-300 bg-cream-300/80 px-6 py-3 font-medium text-primary-800 backdrop-blur-sm transition hover:border-primary-600 hover:bg-primary-600 hover:text-white"
+        >
+          <UIcon name="i-lucide-phone" class="size-5" />
+          {{ chrome.settings.hotline }}
+        </a>
+      </template>
+    </SiteHomeHero>
 
     <!-- 2. Featured solutions -->
     <section v-if="featured.length" class="mx-auto max-w-8xl px-4 py-16 sm:px-6 lg:px-8 xl:px-12">

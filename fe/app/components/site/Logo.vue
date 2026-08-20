@@ -58,10 +58,11 @@ const width = computed(() => {
     <!--
       `sm:gap-4` rather than a tighter gap all the way up: from sm the row's
       width is what the slogan below justifies out to, and at 10 px the row
-      measured ~205 px against the slogan's ~208 px — three pixels short, which
-      is enough to make the justify inert. See the slogan's own note below.
-      Below sm the slogan is hidden and the bar is short of room, so the tighter
-      gap stands there.
+      measured ~205 px against the slogan's ~205 px — too close to call, and
+      once the slogan is the wider of the two its `text-align-last: justify`
+      goes inert and the row above is what ends short. The wider gap keeps the
+      row at ~210 px, comfortably the longer line. Below sm the slogan is hidden
+      and the bar is short of room, so the tighter gap stands there.
     -->
     <span class="flex items-center gap-2.5 sm:gap-4">
       <!--
@@ -84,7 +85,7 @@ const width = computed(() => {
       <span class="font-bold leading-none tracking-tight pt-1 [font-size:calc(var(--mark)/0.74)]">TAIDA</span>
     </span>
     <span
-      class="mt-2 hidden w-full text-[12px] font-bold leading-none tracking-[-0.03em] opacity-80 [text-align-last:justify] sm:block"
+      class="mt-2 hidden w-full text-[12px] leading-none tracking-[-0.03em] opacity-80 [text-align-last:justify] sm:block"
     >
       Your Partner for Business Excellence
     </span>

@@ -23,12 +23,13 @@ class PageController extends Controller
         $payload = ContentCache::remember('pages.show', ['slug' => $slug], function () use ($slug, $request): array {
             $page = Page::query()
                 ->where('status', ContentStatus::Published)
+                // `whereTranslatedSlug` chứ không phải một `whereHas` riêng: nó mang theo
+                // luật rơi về locale chính cho bản ghi chưa dịch (xem HasTranslations).
+                // Thiếu nó thì /zh/chinh-sach-bao-mat — địa chỉ mà chính menu tiếng Trung
+                // trỏ tới khi trang chưa được dịch — trả 404 và làm hỏng cả bản build.
                 ->where(fn (Builder $query) => $query
                     ->where('key', $slug)
-                    ->orWhereHas('translations', fn (Builder $translations) => $translations
-                        ->where('locale', app()->getLocale())
-                        ->where('slug', $slug),
-                    ))
+                    ->orWhere(fn (Builder $translated) => $translated->whereTranslatedSlug($slug)))
                 ->with('cover')
                 ->withAllTranslations()
                 ->first();

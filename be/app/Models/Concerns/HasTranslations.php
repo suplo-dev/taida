@@ -100,15 +100,45 @@ trait HasTranslations
     /**
      * Constrains to the record whose slug matches within a locale. Slugs are
      * unique per locale, so this identifies at most one record.
+     *
+     * A record with no translation for the locale is matched by its PRIMARY
+     * slug instead. That mirrors what the rest of the model already does —
+     * `translate()` falls back, so a listing under /zh shows the Vietnamese
+     * name and links to the Vietnamese slug — and without it those links lead
+     * to a 404. That is not a cosmetic gap: the static build crawls its own
+     * links with `failOnError`, so one untranslated record would fail the
+     * publish for the whole site, in every language.
+     *
+     * The fallback is deliberately narrow. It applies only to records with
+     * NOTHING in the active locale, so an exact match always wins and a slug
+     * that belongs to one record in the active locale can never be shadowed by
+     * another record that happens to use the same slug in the primary one.
      */
     public function scopeWhereTranslatedSlug(Builder $query, string $slug, ?string $locale = null): void
     {
         $locale ??= app()->getLocale();
+        $primary = static::primaryLocale();
 
-        $query->whereHas('translations', fn (Builder $translations) => $translations
-            ->where('locale', $locale)
-            ->where('slug', $slug),
-        );
+        $query->where(function (Builder $query) use ($slug, $locale, $primary): void {
+            $query->whereHas('translations', fn (Builder $translations) => $translations
+                ->where('locale', $locale)
+                ->where('slug', $slug),
+            );
+
+            if ($locale === $primary) {
+                return;
+            }
+
+            $query->orWhere(fn (Builder $untranslated) => $untranslated
+                ->whereHas('translations', fn (Builder $translations) => $translations
+                    ->where('locale', $primary)
+                    ->where('slug', $slug),
+                )
+                ->whereDoesntHave('translations', fn (Builder $translations) => $translations
+                    ->where('locale', $locale),
+                ),
+            );
+        });
     }
 
     /**

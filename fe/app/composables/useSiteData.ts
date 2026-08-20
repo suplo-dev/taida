@@ -8,6 +8,10 @@ export interface SiteSettings {
   social?: Record<string, string>
   /** Null when the admin has not uploaded one; SiteLogo falls back to the bundled mark. */
   logo?: Media | null
+  /** Ảnh nền hero trang chủ, cũng dùng làm poster khi có `heroVideo`. */
+  heroImage?: Media | null
+  /** URL video nền hero. Là địa chỉ ngoài chứ không phải media id — xem Setting::URL_KEYS. */
+  heroVideo?: string | null
 }
 
 /**

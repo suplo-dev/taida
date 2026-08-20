@@ -75,9 +75,15 @@ Google — không có gì báo lỗi.
 **API phải chạy được và có dữ liệu trong lúc build** — Nuxt gọi vào đó để dựng
 từng trang. Build lần đầu thì trỏ vào API đã lên hosting.
 
-Kết quả nằm ở `fe/.output/public/` (~9 MB): 82 trang HTML, 70 ảnh chia sẻ mạng
-xã hội, sitemap, và `.htaccess` — tất cả đều là file tĩnh, không cần tiến trình
-nào chạy nền.
+Kết quả nằm ở `fe/.output/public/` (~13 MB): khoảng 130 trang HTML, ảnh chia sẻ
+mạng xã hội, sitemap, và `.htaccess` — tất cả đều là file tĩnh, không cần tiến
+trình nào chạy nền.
+
+Site có **ba ngôn ngữ**: tiếng Việt ở gốc (`/`), tiếng Anh ở `/en`, tiếng Trung
+giản thể ở `/zh`. Mỗi bản ghi trong CMS có một tab cho mỗi ngôn ngữ; tab nào bỏ
+trống thì trang công khai hiển thị bản tiếng Việt và **không** vào sitemap (nó
+mang `noindex` cho tới khi có bản dịch thật). Nhờ vậy mở thêm ngôn ngữ không phải
+đợi dịch xong toàn bộ nội dung.
 
 ## 3. Đưa Laravel lên (lần đầu)
 

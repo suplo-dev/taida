@@ -16,10 +16,16 @@ withDefaults(defineProps<{ title?: string, description?: string, siteName?: stri
     Vietnamese headline came out as a "no glyph" box. Be Vietnam Pro is
     registered by @nuxt/fonts with the vietnamese subset, so naming it here is
     enough; it also keeps the share card in the same face as the page.
+
+    Noto Sans SC is the fallback behind it, and it is not optional: Be Vietnam
+    Pro has no Han glyphs whatsoever, so the card for a Chinese page did not
+    render boxes — it rendered NOTHING, an empty blue rectangle with the logo.
+    The renderer resolves this family on its own (see `ogImage.fontSubsets`), so
+    it costs build time only; nothing extra is downloaded by a reader.
   -->
   <div
     class="flex h-full w-full flex-col justify-between bg-[#003a70] p-20"
-    style="font-family: Be Vietnam Pro"
+    style="font-family: Be Vietnam Pro, Noto Sans SC"
   >
     <div class="flex text-4xl font-bold text-white">{{ siteName }}</div>
 

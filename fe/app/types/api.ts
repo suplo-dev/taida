@@ -1,4 +1,4 @@
-export type Locale = 'vi' | 'en'
+export type Locale = 'vi' | 'en' | 'zh'
 
 export type ContentStatus = 'draft' | 'published'
 

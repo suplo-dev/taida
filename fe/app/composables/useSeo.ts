@@ -1,3 +1,16 @@
+import type { Locale } from '~/types/api'
+
+/**
+ * Facebook đọc `og:locale` theo định dạng riêng của nó (`ngôn_ngữ_VÙNG`), không
+ * theo thẻ BCP-47 khai trong `i18n.locales`. Hai bảng đó không trùng nhau: site
+ * khai `zh-Hans` cho hreflang, còn Facebook chỉ hiểu `zh_CN`.
+ */
+const OG_LOCALES: Record<Locale, string> = {
+  vi: 'vi_VN',
+  en: 'en_US',
+  zh: 'zh_CN',
+}
+
 interface SeoInput {
   title: string
   description?: string | null
@@ -38,7 +51,9 @@ export function useSeo(input: MaybeRefOrGetter<SeoInput>) {
     ogDescription: () => resolved.value.description ?? undefined,
     ogImage: () => resolved.value.image ?? undefined,
     ogType: () => (resolved.value.type === 'article' ? 'article' : 'website'),
-    ogLocale: () => (locale.value === 'vi' ? 'vi_VN' : 'en_US'),
+    // og:locale muốn định dạng ngôn ngữ_VÙNG của Facebook, không phải thẻ BCP-47
+    // trong `i18n.locales`. `zh_CN` là giá trị Facebook nhận cho Trung giản thể.
+    ogLocale: () => OG_LOCALES[locale.value as Locale] ?? 'en_US',
     twitterCard: 'summary_large_image',
   })
 

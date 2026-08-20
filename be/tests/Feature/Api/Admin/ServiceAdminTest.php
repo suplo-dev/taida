@@ -71,6 +71,68 @@ class ServiceAdminTest extends TestCase
         $this->assertSame('iso-vn', Service::query()->sole()->translations()->where('locale', 'vi')->sole()->slug);
     }
 
+    /**
+     * `Str::slug()` keeps ASCII only, so a Chinese title reduces to an empty
+     * string and used to land on `Str::random(8)` — an unreadable address that
+     * changed on every save. The record's English name stands in instead.
+     */
+    public function test_a_chinese_title_borrows_its_slug_from_the_english_name(): void
+    {
+        $this->actingAs($this->editor)
+            ->postJson('/api/v1/admin/services', $this->payload([
+                'translations' => [
+                    'vi' => ['name' => 'Chứng nhận ISO'],
+                    'en' => ['name' => 'ISO Certification'],
+                    'zh' => ['name' => '质量保证认证'],
+                ],
+            ]))
+            ->assertCreated();
+
+        $service = Service::query()->sole();
+
+        $this->assertSame('iso-certification', $service->translations()->where('locale', 'zh')->sole()->slug);
+    }
+
+    /**
+     * Only a title with NO ASCII in it borrows from another language. A title
+     * that mixes the two keeps its own: "ISO 9001质量管理" is still recognisable
+     * as `iso-9001`, and it is what the editor actually typed.
+     */
+    public function test_a_mixed_title_keeps_the_ascii_it_already_has(): void
+    {
+        $this->actingAs($this->editor)
+            ->postJson('/api/v1/admin/services', $this->payload([
+                'translations' => [
+                    'vi' => ['name' => 'Chứng nhận ISO'],
+                    'en' => ['name' => 'ISO Certification'],
+                    'zh' => ['name' => 'ISO 9001质量管理'],
+                ],
+            ]))
+            ->assertCreated();
+
+        $this->assertSame(
+            'iso-9001',
+            Service::query()->sole()->translations()->where('locale', 'zh')->sole()->slug,
+        );
+    }
+
+    /** Without an English name to borrow, the Vietnamese one is next. */
+    public function test_a_chinese_title_falls_back_to_the_vietnamese_name_when_english_is_blank(): void
+    {
+        $this->actingAs($this->editor)
+            ->postJson('/api/v1/admin/services', $this->payload([
+                'translations' => [
+                    'vi' => ['name' => 'Chứng nhận ISO'],
+                    'zh' => ['name' => '质量保证认证'],
+                ],
+            ]))
+            ->assertCreated();
+
+        $service = Service::query()->sole();
+
+        $this->assertSame('chung-nhan-iso', $service->translations()->where('locale', 'zh')->sole()->slug);
+    }
+
     public function test_a_colliding_slug_gets_a_counter_appended(): void
     {
         $this->actingAs($this->editor)->postJson('/api/v1/admin/services', $this->payload())->assertCreated();
@@ -107,11 +169,15 @@ class ServiceAdminTest extends TestCase
     public function test_clearing_a_translation_removes_it_so_the_fallback_applies(): void
     {
         $service = Service::factory()->create();
-        $this->assertSame(2, $service->translations()->count());
+        $this->assertSame(count(config('app.supported_locales')), $service->translations()->count());
 
         $this->actingAs($this->editor)
             ->putJson("/api/v1/admin/services/{$service->id}", $this->payload([
-                'translations' => ['vi' => ['name' => 'Chỉ tiếng Việt'], 'en' => ['name' => null]],
+                'translations' => [
+                    'vi' => ['name' => 'Chỉ tiếng Việt'],
+                    'en' => ['name' => null],
+                    'zh' => ['name' => null],
+                ],
             ]))
             ->assertOk();
 

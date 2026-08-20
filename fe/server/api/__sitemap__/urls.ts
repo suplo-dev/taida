@@ -1,21 +1,5 @@
-interface SitemapEntry {
-  type: 'service' | 'industry' | 'post' | 'page'
-  id: number
-  slugs: Partial<Record<'vi' | 'en', string>>
-  updatedAt: string | null
-}
-
-/**
- * Path prefixes per content type. The two locales use different words in the
- * URL, so each entry produces one URL per locale rather than a single path
- * that @nuxtjs/sitemap could translate on its own.
- */
-const PREFIXES: Record<SitemapEntry['type'], { vi: string, en: string }> = {
-  service: { vi: '/dich-vu/', en: '/en/services/' },
-  industry: { vi: '/nganh-nghe/', en: '/en/industries/' },
-  post: { vi: '/tin-tuc/', en: '/en/insights/' },
-  page: { vi: '/', en: '/en/' },
-}
+import type { ContentEntry, Locale } from '~~/shared/content-urls'
+import { DEFAULT_LOCALE, HREFLANG, LOCALES, translatedPaths } from '~~/shared/content-urls'
 
 /**
  * @nuxtjs/sitemap types `priority` as a union of the eleven values with one
@@ -25,55 +9,56 @@ const PREFIXES: Record<SitemapEntry['type'], { vi: string, en: string }> = {
 type Priority = 0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 | 0.6 | 0.7 | 0.8 | 0.9 | 1
 
 /** Listing and landing pages, which have no database record behind them. */
-const STATIC_PAGES: { vi: string, en: string, priority: Priority }[] = [
-  { vi: '/', en: '/en', priority: 1 },
-  { vi: '/dich-vu', en: '/en/services', priority: 0.9 },
-  { vi: '/nganh-nghe', en: '/en/industries', priority: 0.9 },
-  { vi: '/tin-tuc', en: '/en/insights', priority: 0.8 },
+const STATIC_PAGES: { paths: Record<Locale, string>, priority: Priority }[] = [
+  { paths: { vi: '/', en: '/en', zh: '/zh' }, priority: 1 },
+  { paths: { vi: '/dich-vu', en: '/en/services', zh: '/zh/services' }, priority: 0.9 },
+  { paths: { vi: '/nganh-nghe', en: '/en/industries', zh: '/zh/industries' }, priority: 0.9 },
+  { paths: { vi: '/tin-tuc', en: '/en/insights', zh: '/zh/insights' }, priority: 0.8 },
 ]
 
 export default defineSitemapEventHandler(async () => {
   const config = useRuntimeConfig()
 
-  const { data } = await $fetch<{ data: SitemapEntry[] }>('/api/v1/sitemap-urls', {
+  const { data } = await $fetch<{ data: ContentEntry[] }>('/api/v1/sitemap-urls', {
     baseURL: config.apiBase,
   })
 
-  const urls = STATIC_PAGES.flatMap(page => localisedPair(page.vi, page.en, null, page.priority))
+  const urls = STATIC_PAGES.flatMap(page => localised(page.paths, null, page.priority))
 
   for (const entry of data) {
-    const prefix = PREFIXES[entry.type]
-
-    if (!prefix || !entry.slugs.vi) {
+    if (!entry.slugs[DEFAULT_LOCALE]) {
       continue
     }
 
-    urls.push(...localisedPair(
-      prefix.vi + entry.slugs.vi,
-      entry.slugs.en ? prefix.en + entry.slugs.en : null,
-      entry.updatedAt,
-      entry.type === 'post' ? 0.6 : 0.7,
-    ))
+    // Chỉ ngôn ngữ nào ĐÃ CÓ bản dịch thật mới được khai. Bản chưa dịch vẫn xem
+    // được trên site (nội dung rơi về tiếng Việt) nhưng mang `noindex`, nên đưa
+    // nó vào đây là hai nơi nói hai điều khác nhau về cùng một trang.
+    urls.push(...localised(translatedPaths(entry), entry.updatedAt, entry.type === 'post' ? 0.6 : 0.7))
   }
 
   return urls
 })
 
 /**
- * Emits both locale URLs, each pointing at the other through `alternatives`
- * so Google can pair them up.
+ * Emits one URL per translated locale, each pointing at all the others through
+ * `alternatives` so Google can pair them up.
  */
-function localisedPair(vi: string, en: string | null, lastmod: string | null, priority: Priority) {
+function localised(
+  paths: Partial<Record<Locale, string>>,
+  lastmod: string | null,
+  priority: Priority,
+) {
+  const available = LOCALES.filter(locale => Boolean(paths[locale]))
+  const fallback = paths[DEFAULT_LOCALE]
+
   const alternatives = [
-    { hreflang: 'vi', href: vi },
-    ...(en ? [{ hreflang: 'en', href: en }] : []),
-    { hreflang: 'x-default', href: vi },
+    ...available.map(locale => ({ hreflang: HREFLANG[locale], href: paths[locale] as string })),
+    // x-default là địa chỉ dành cho người đọc không khớp ngôn ngữ nào — bản
+    // tiếng Việt, vì đó là bản luôn tồn tại và đầy đủ nhất.
+    ...(fallback ? [{ hreflang: 'x-default', href: fallback }] : []),
   ]
 
   const shared = { lastmod: lastmod ?? undefined, priority, _i18nTransform: false }
 
-  return [
-    { loc: vi, ...shared, alternatives },
-    ...(en ? [{ loc: en, ...shared, alternatives }] : []),
-  ]
+  return available.map(locale => ({ loc: paths[locale] as string, ...shared, alternatives }))
 }

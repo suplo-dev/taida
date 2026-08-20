@@ -62,6 +62,22 @@ class ContentApiTest extends TestCase
             ->assertJsonPath('data.key', 'about-us');
     }
 
+    /**
+     * Trang tĩnh đi qua một truy vấn riêng (còn tra theo `key`), nên nó phải được
+     * nhắc lại rằng luật rơi về locale chính cũng áp dụng ở đây: menu tiếng Trung
+     * trỏ tới slug tiếng Việt khi trang chưa dịch, và bản build tải chính link đó.
+     */
+    public function test_a_page_falls_back_to_the_primary_slug_when_untranslated(): void
+    {
+        $page = Page::factory()->create(['key' => 'about-us']);
+        $page->translations()->where('locale', 'zh')->delete();
+        $viSlug = $page->translations()->where('locale', 'vi')->sole()->slug;
+
+        $this->getJson("/api/v1/pages/{$viSlug}?locale=zh")
+            ->assertOk()
+            ->assertJsonPath('data.key', 'about-us');
+    }
+
     public function test_a_draft_page_is_not_served(): void
     {
         Page::factory()->draft()->create(['key' => 'secret']);
@@ -202,6 +218,33 @@ class ContentApiTest extends TestCase
             ->assertJsonCount(0, 'data.services');
     }
 
+    /**
+     * Bản chưa dịch vẫn hiện trong danh sách dưới /zh bằng tiếng Việt, nên tìm nó
+     * bằng chính chữ đang hiển thị phải ra. Ngược lại, bản ĐÃ dịch chỉ tìm được
+     * bằng chữ tiếng Trung — người đọc không bao giờ thấy tên tiếng Việt của nó.
+     */
+    public function test_search_falls_back_to_the_primary_locale_for_untranslated_records(): void
+    {
+        $untranslated = Service::factory()->create();
+        $untranslated->translations()->where('locale', 'zh')->delete();
+        $viName = $untranslated->translations()->where('locale', 'vi')->sole()->name;
+
+        $this->getJson('/api/v1/search?q='.urlencode($viName).'&locale=zh')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.services')
+            ->assertJsonPath('data.services.0.id', $untranslated->id);
+    }
+
+    public function test_search_does_not_fall_back_for_records_that_have_the_locale(): void
+    {
+        $translated = Service::factory()->create();
+        $viName = $translated->translations()->where('locale', 'vi')->sole()->name;
+
+        $this->getJson('/api/v1/search?q='.urlencode($viName).'&locale=zh')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.services');
+    }
+
     public function test_search_ignores_a_term_shorter_than_two_characters(): void
     {
         Service::factory()->create();
@@ -222,6 +265,6 @@ class ContentApiTest extends TestCase
         $services = array_values(array_filter($response->json('data'), fn (array $e) => $e['type'] === 'service'));
         $this->assertCount(1, $services);
         $this->assertSame($service->id, $services[0]['id']);
-        $this->assertEqualsCanonicalizing(['vi', 'en'], array_keys($services[0]['slugs']));
+        $this->assertEqualsCanonicalizing(config('app.supported_locales'), array_keys($services[0]['slugs']));
     }
 }

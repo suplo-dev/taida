@@ -164,6 +164,7 @@ jobs:
           set -e
           test -f .output/public/index.html
           test -f .output/public/en/index.html
+          test -f .output/public/zh/index.html
           test -f .output/public/sitemap.xml
           # Pre-compressed variants are what static hosting serves. Missing them
           # costs about six times the transfer size, and nothing else notices.
@@ -186,9 +187,34 @@ jobs:
           # kiểm tra ở trên.
           test -f .output/public/admin/index.html
           test -f .output/public/200.html
+          # Ngưỡng sàn, không phải con số chính xác: dữ liệu seed hiện sinh ~124
+          # trang cho ba ngôn ngữ. Nó bắt trường hợp crawl chết sớm và bản build
+          # ra vài trang gốc — thứ mà mọi kiểm tra ở trên vẫn cho qua.
           pages=$(find .output/public -name index.html | wc -l)
           echo "Generated $pages pages"
-          test "$pages" -gt 40
+          test "$pages" -gt 100
+
+          # Ba ngôn ngữ phải cùng dựng. Thiếu hẳn một bản thì tổng số trang vẫn
+          # qua ngưỡng trên, nên phải đếm riêng.
+          for locale in en zh; do
+            count=$(find ".output/public/$locale" -name index.html | wc -l)
+            echo "  $locale: $count pages"
+            test "$count" -gt 10
+          done
+
+          # Sitemap chỉ khai bản dịch THẬT: một trang tiếng Trung chưa dịch vẫn
+          # xem được (nội dung rơi về tiếng Việt) nhưng phải mang noindex, và hai
+          # thứ đó phải nói cùng một điều. Xem useLocalisedSlugs.ts.
+          for url in $(grep -o '<loc>[^<]*</loc>' .output/public/sitemap.xml | sed -e 's|<loc>||g' -e 's|</loc>||g'); do
+            path="${url#*//*/}"
+            [ "$path" = "$url" ] && path=''
+            file=".output/public/${path:+$path/}index.html"
+            [ -f "$file" ] || { echo "::error::sitemap khai $url nhưng bản build không có $file"; exit 1; }
+            if grep -q 'name="robots" content="noindex' "$file"; then
+              echo "::error::$url vừa nằm trong sitemap vừa mang noindex"
+              exit 1
+            fi
+          done
 
           # A page whose API call failed still gets written to disk: useAsyncData
           # keeps the error in the payload's `_errors` instead of throwing, so

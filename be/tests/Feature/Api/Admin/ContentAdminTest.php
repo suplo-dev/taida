@@ -199,6 +199,59 @@ class ContentAdminTest extends TestCase
             ->assertJsonPath('data.address', 'Hanoi');
     }
 
+    /**
+     * Ảnh hero đi đúng đường của logo — nó nằm trong MEDIA_KEYS — nhưng trang chủ
+     * công khai mới là nơi dùng nó, nên phải chắc rằng endpoint công khai cũng bung
+     * ra thành bản ghi media chứ không trả về một con số id.
+     */
+    public function test_the_hero_image_reaches_the_public_endpoint_as_a_media_record(): void
+    {
+        $media = Media::factory()->create();
+
+        $this->actingAs($this->admin)
+            ->putJson('/api/v1/admin/settings', ['settings' => ['heroImage' => $media->id]])
+            ->assertOk();
+
+        $this->getJson('/api/v1/settings?locale=vi')
+            ->assertOk()
+            ->assertJsonPath('data.heroImage.id', $media->id)
+            ->assertJsonPath('data.heroImage.url', $media->url);
+    }
+
+    public function test_the_hero_video_must_be_an_https_address(): void
+    {
+        $this->actingAs($this->admin)
+            ->putJson('/api/v1/admin/settings', ['settings' => ['heroVideo' => 'không-phải-địa-chỉ']])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('settings.heroVideo');
+
+        // http bị trình duyệt chặn dưới dạng mixed content trên site https.
+        // Thông báo phải đọc được: trang cấu hình chỉ hiện nó dưới dạng một dòng
+        // toast, không gắn vào ô nhập nào.
+        $this->actingAs($this->admin)
+            ->putJson('/api/v1/admin/settings', ['settings' => ['heroVideo' => 'http://cdn.example.com/hero.mp4']])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors([
+                'settings.heroVideo' => 'Địa chỉ video nền phải bắt đầu bằng https:// và trỏ tới một file video (ví dụ https://cdn.example.com/hero.mp4).',
+            ]);
+
+        $this->actingAs($this->admin)
+            ->putJson('/api/v1/admin/settings', ['settings' => ['heroVideo' => 'https://cdn.example.com/hero.mp4']])
+            ->assertOk()
+            ->assertJsonPath('data.heroVideo', 'https://cdn.example.com/hero.mp4');
+    }
+
+    /** Ô trống trong form là chuỗi rỗng, và nó phải xoá được địa chỉ đã lưu. */
+    public function test_the_hero_video_can_be_cleared_with_an_empty_field(): void
+    {
+        Setting::create(['key' => 'heroVideo', 'value' => 'https://cdn.example.com/hero.mp4']);
+
+        $this->actingAs($this->admin)
+            ->putJson('/api/v1/admin/settings', ['settings' => ['heroVideo' => '']])
+            ->assertOk()
+            ->assertJsonPath('data.heroVideo', null);
+    }
+
     public function test_the_logo_is_stored_as_an_id_but_read_back_as_a_media_record(): void
     {
         $media = Media::factory()->create();

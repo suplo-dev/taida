@@ -1,0 +1,65 @@
+{
+  "nav": {
+    "industries": "行业领域",
+    "services": "服务项目",
+    "about": "关于我们",
+    "insights": "新闻资讯",
+    "contact": "联系我们",
+    "search": "搜索",
+    "menu": "菜单"
+  },
+  "common": {
+    "readMore": "了解更多",
+    "viewAll": "查看全部",
+    "loading": "加载中…",
+    "notFound": "未找到相关内容",
+    "backToHome": "返回首页",
+    "home": "首页",
+    "previous": "上一页",
+    "next": "下一页"
+  },
+  "home": {
+    "exploreServices": "探索我们的服务",
+    "industriesTitle": "我们服务的行业",
+    "industriesSubtitle": "从化工到零售，深耕各行业的专业能力。",
+    "servicesTitle": "核心服务",
+    "servicesSubtitle": "覆盖产品全生命周期的保证、检测、鉴定与认证服务。",
+    "newsTitle": "新闻与活动",
+    "ctaTitle": "需要为您的项目获取建议？",
+    "ctaBody": "我们的专家团队随时为您提供支持。"
+  },
+  "service": {
+    "relatedIndustries": "适用行业",
+    "subServices": "相关服务"
+  },
+  "industry": {
+    "relatedServices": "该行业的相关服务",
+    "subIndustries": "细分领域"
+  },
+  "post": {
+    "related": "相关文章",
+    "publishedOn": "发布于",
+    "allCategories": "全部分类"
+  },
+  "search": {
+    "placeholder": "请输入关键词…",
+    "headerPlaceholder": "搜索...",
+    "resultsFor": "搜索结果",
+    "empty": "未找到任何结果。",
+    "hint": "请输入至少 2 个字符进行搜索。"
+  },
+  "utility": {
+    "edition": "泰达越南",
+    "global": "全球",
+    "vietnam": "越南",
+    "china": "中国"
+  },
+  "footer": {
+    "rights": "版权所有。"
+  },
+  "error": {
+    "notFoundTitle": "页面未找到",
+    "notFoundBody": "您访问的页面不存在或已被移动。",
+    "generalTitle": "出现了一些问题"
+  }
+}

@@ -5,14 +5,19 @@ const route = useRoute()
 const { data: chrome } = await useSiteData()
 
 /**
- * The region picker doubles as the language switcher: this site exists as a
- * Vietnamese edition and an English one, so "which site" and "which language"
- * are the same question. Rows are declared here rather than fetched because
- * they follow the configured locales, not editable content.
+ * The region picker doubles as the language switcher: each edition of the site
+ * is one language, so "which site" and "which language" are the same question.
+ * Rows are declared here rather than fetched because they follow the configured
+ * locales, not editable content.
+ *
+ * Each row needs its own region label — two rows both reading "Toàn cầu" would
+ * look like a duplicate rather than a choice. The two country editions lead and
+ * the global one closes the list, so the flags read as a pair.
  */
 const regions = [
   { locale: 'vi' as const, region: 'utility.vietnam', lang: 'Tiếng Việt' },
-  { locale: 'en' as const, region: 'utility.globalSite', lang: 'English' },
+  { locale: 'zh' as const, region: 'utility.china', lang: '中文' },
+  { locale: 'en' as const, region: 'utility.global', lang: 'English' },
 ]
 
 const open = ref(false)
@@ -102,8 +107,21 @@ watch(() => route.fullPath, () => (open.value = false))
               class="flex items-center gap-3 px-4 py-2 transition hover:bg-brand-700"
               :class="locale === row.locale ? 'text-white' : 'text-brand-100'"
             >
-              <SiteFlagVn v-if="row.locale === 'vi'" :title="t('utility.vietnam')" />
-              <UIcon v-else name="i-lucide-globe" class="size-5 text-brand-200" />
+              <!--
+                A fixed box for the mark, not each mark at its own size: a flag
+                is 30 px wide against the globe's 20 px, so laid out by the row's
+                own gap the global row's label started 10 px further left than
+                the other two. The box is the widest mark's width, which lines
+                all three labels up, and its height is the globe's — at 20 px,
+                the flags' height, a circle read visibly smaller than the
+                rectangles beside it.
+              -->
+              <span class="flex h-6 w-[1.875rem] shrink-0 items-center justify-center">
+                <SiteFlagVn v-if="row.locale === 'vi'" :title="t('utility.vietnam')" />
+                <SiteFlagCn v-else-if="row.locale === 'zh'" :title="t('utility.china')" />
+                <!-- The English edition is the global one, so it keeps the globe rather than a country's flag. -->
+                <UIcon v-else name="i-lucide-globe" class="size-6 text-brand-200" />
+              </span>
 
               <span class="flex flex-col leading-tight">
                 <span class="font-medium">{{ t(row.region) }}</span>
