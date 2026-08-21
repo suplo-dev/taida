@@ -1,4 +1,5 @@
 import type { LocalisedSlugs } from '~/types/api'
+import { LOCALES, resolveSlug } from '~~/shared/content-urls'
 
 /**
  * Registers this record's slug in every locale with the router.
@@ -53,8 +54,19 @@ export function useLocalisedSlugs(slugs: MaybeRefOrGetter<LocalisedSlugs | undef
 
       registered = next
 
+      /*
+       * Ngôn ngữ chưa có bản dịch vẫn phải được khai một slug, và phải đúng
+       * slug mà API sẽ nhận: bản ghi chỉ có tiếng Việt và tiếng Anh trả lời ở
+       * /zh/about-us chứ không phải /zh/ve-chung-toi. Bỏ trống thì
+       * `switchLocalePath` giữ nguyên slug của trang đang mở — đúng tình cờ khi
+       * đứng ở bản tiếng Anh, và là một địa chỉ không tồn tại khi đứng ở bản
+       * tiếng Việt.
+       */
       setI18nParams(Object.fromEntries(
-        Object.entries(value).map(([code, slug]) => [code, { slug }]),
+        LOCALES
+          .map(locale => [locale, resolveSlug(value, locale)] as const)
+          .filter((pair): pair is readonly [typeof LOCALES[number], string] => Boolean(pair[1]))
+          .map(([locale, slug]) => [locale, { slug }]),
       ))
     },
     { immediate: true, flush: 'post' },

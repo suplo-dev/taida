@@ -74,9 +74,12 @@ function field(locale: Locale, name: string): string {
                 <UInput v-model="form.translations[locale].title" size="lg" class="w-full" />
               </AdminFormField>
 
-              <AdminFormField label="Đường dẫn (slug)" :error="error(field(locale, 'slug'))" hint="Để trống sẽ tự sinh từ tiêu đề.">
-                <UInput v-model="form.translations[locale].slug" class="w-full" />
-              </AdminFormField>
+              <AdminSlugField
+                v-model="form.translations[locale].slug"
+                :locale="locale"
+                :translations="form.translations"
+                :error="error(field(locale, 'slug'))"
+              />
 
               <AdminFormField label="Nội dung" :error="error(field(locale, 'body'))">
                 <AdminRichTextEditor :key="locale" v-model="form.translations[locale].body" />

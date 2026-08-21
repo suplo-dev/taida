@@ -30,11 +30,21 @@ const src = computed(() => props.logo?.url ?? '/logo.jpg')
  * Reserving the exact box the image will occupy keeps the header from
  * reflowing once it loads. The bundled mark is square; an upload is measured
  * on the way in, so its real ratio is known too.
+ *
+ * Doubled on the way out: the box above is CSS pixels, but the file is fetched
+ * at 2× so the mark stays sharp on a retina bar.
+ *
+ * Read off `props` rather than the bare prop names a template would use —
+ * `withDefaults` only fills the defaults in for the script, and the language
+ * server still sees `size` as possibly undefined inside the template.
  */
-const width = computed(() => {
-  const { width: w, height: h } = props.logo ?? {}
+const box = computed(() => {
+  const { width, height } = props.logo ?? {}
 
-  return w && h ? Math.round((w / h) * props.size) : props.size
+  return {
+    width: (width && height ? Math.round((width / height) * props.size) : props.size) * 2,
+    height: props.size * 2,
+  }
 })
 </script>
 
@@ -77,8 +87,8 @@ const width = computed(() => {
           :src="src"
           alt=""
           format="webp"
-          :width="width * 2"
-          :height="size * 2"
+          :width="box.width"
+          :height="box.height"
           class="h-[var(--mark)] w-auto max-w-40 object-contain"
         />
       </span>

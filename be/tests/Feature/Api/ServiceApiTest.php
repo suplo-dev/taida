@@ -103,14 +103,30 @@ class ServiceApiTest extends TestCase
 
     /**
      * The static build crawls its own links: a listing under an untranslated
-     * locale falls back to the primary name AND the primary slug, so the link
+     * locale falls back to a borrowed name AND the matching slug, so the link
      * it renders has to resolve. Before this, one untranslated record 404ed
      * mid-crawl and failed the publish for every language at once.
+     *
+     * Chinese borrows from English first, so name and slug both come from the
+     * English row — /zh/services/cargo-inspection, not the Vietnamese address.
      */
-    public function test_show_falls_back_to_the_primary_slug_when_the_locale_has_no_translation(): void
+    public function test_show_falls_back_to_the_english_slug_in_chinese(): void
     {
         $service = Service::factory()->create();
         $service->translations()->where('locale', 'zh')->delete();
+        $en = $service->translations()->where('locale', 'en')->sole();
+
+        $this->getJson("/api/v1/services/{$en->slug}?locale=zh")
+            ->assertOk()
+            ->assertJsonPath('data.id', $service->id)
+            ->assertJsonPath('data.name', $en->name);
+    }
+
+    /** Hết tiếng Anh thì mới rơi tiếp về slug tiếng Việt. */
+    public function test_show_falls_back_to_the_primary_slug_when_english_is_missing_too(): void
+    {
+        $service = Service::factory()->create();
+        $service->translations()->whereIn('locale', ['en', 'zh'])->delete();
         $vi = $service->translations()->where('locale', 'vi')->sole();
 
         $this->getJson("/api/v1/services/{$vi->slug}?locale=zh")

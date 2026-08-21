@@ -2,6 +2,7 @@
 
 namespace App\Models\Concerns;
 
+use App\Support\Locales;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -14,7 +15,8 @@ use Illuminate\Support\Collection;
  * The consuming model declares which columns live on the translation with a
  * `$translatable` array; those names then read straight off the model, so
  * `$service->name` returns the value for the active locale and silently falls
- * back to the primary locale when a translation has not been written yet.
+ * back down the locale's chain (see `App\Support\Locales`) when a translation
+ * has not been written yet.
  */
 trait HasTranslations
 {
@@ -30,7 +32,7 @@ trait HasTranslations
     /** The locale content must always be authored in. */
     public static function primaryLocale(): string
     {
-        return config('app.supported_locales')[0];
+        return Locales::primary();
     }
 
     public function translations(): HasMany
@@ -39,32 +41,37 @@ trait HasTranslations
     }
 
     /**
-     * The translation for a locale, falling back to the primary locale.
+     * The translation for a locale, falling back down its chain.
      */
     public function translate(?string $locale = null): ?Model
     {
-        $locale ??= app()->getLocale();
-
         /** @var Collection<int, Model> $translations */
         $translations = $this->relationLoaded('translations')
             ? $this->translations
             : $this->translations()->get();
 
-        return $translations->firstWhere('locale', $locale)
-            ?? $translations->firstWhere('locale', static::primaryLocale());
+        foreach (Locales::chain($locale) as $candidate) {
+            $translation = $translations->firstWhere('locale', $candidate);
+
+            if ($translation !== null) {
+                return $translation;
+            }
+        }
+
+        return null;
     }
 
     /**
-     * Eager-loads translations, keeping both the requested locale and the
-     * primary one so the fallback resolves without an extra query.
+     * Eager-loads translations, keeping every locale the requested one can
+     * borrow from so the fallback resolves without an extra query.
      */
     public function scopeWithTranslation(Builder $query, ?string $locale = null): void
     {
-        $locale ??= app()->getLocale();
+        $chain = Locales::chain($locale);
 
         // Eager-load constraints receive the relation, not a query builder.
         $query->with(['translations' => fn (Relation $translations) => $translations
-            ->whereIn('locale', array_unique([$locale, static::primaryLocale()])),
+            ->whereIn('locale', $chain),
         ]);
     }
 
@@ -101,43 +108,49 @@ trait HasTranslations
      * Constrains to the record whose slug matches within a locale. Slugs are
      * unique per locale, so this identifies at most one record.
      *
-     * A record with no translation for the locale is matched by its PRIMARY
-     * slug instead. That mirrors what the rest of the model already does —
-     * `translate()` falls back, so a listing under /zh shows the Vietnamese
-     * name and links to the Vietnamese slug — and without it those links lead
-     * to a 404. That is not a cosmetic gap: the static build crawls its own
-     * links with `failOnError`, so one untranslated record would fail the
-     * publish for the whole site, in every language.
+     * A record with no translation for the locale is matched by the slug of
+     * the nearest locale it borrows from — /zh/about-us reaches a page written
+     * only in Vietnamese and English, because `translate()` will serve that
+     * reader the English row and this must answer at the English row's
+     * address. The two walk the same chain; if they disagreed, a URL the
+     * language switcher emits would render nothing, and the static build
+     * crawls its own links with `failOnError`, so one such record fails the
+     * publish for the whole site in every language.
      *
-     * The fallback is deliberately narrow. It applies only to records with
-     * NOTHING in the active locale, so an exact match always wins and a slug
-     * that belongs to one record in the active locale can never be shadowed by
-     * another record that happens to use the same slug in the primary one.
+     * Each fallback step is deliberately narrow: it applies only to records
+     * with NOTHING in any nearer locale of the chain, so no single record is
+     * ever reachable at two different addresses in the same locale.
+     *
+     * What it does not settle is a collision BETWEEN records — one record
+     * translated into Chinese under the slug another record already carries in
+     * English. Both branches match and `first()` decides on row order. That
+     * needs a uniqueness check spanning the chain at write time, which the
+     * admin validator does not do today; the per-locale unique index cannot
+     * see it.
      */
     public function scopeWhereTranslatedSlug(Builder $query, string $slug, ?string $locale = null): void
     {
-        $locale ??= app()->getLocale();
-        $primary = static::primaryLocale();
+        $chain = Locales::chain($locale);
 
-        $query->where(function (Builder $query) use ($slug, $locale, $primary): void {
-            $query->whereHas('translations', fn (Builder $translations) => $translations
-                ->where('locale', $locale)
-                ->where('slug', $slug),
-            );
+        $query->where(function (Builder $query) use ($slug, $chain): void {
+            foreach ($chain as $index => $candidate) {
+                // Locales nearer than this one in the chain would have been
+                // used instead, so a row in any of them rules this step out.
+                $nearer = array_slice($chain, 0, $index);
 
-            if ($locale === $primary) {
-                return;
+                $query->orWhere(function (Builder $match) use ($slug, $candidate, $nearer): void {
+                    $match->whereHas('translations', fn (Builder $translations) => $translations
+                        ->where('locale', $candidate)
+                        ->where('slug', $slug),
+                    );
+
+                    foreach ($nearer as $locale) {
+                        $match->whereDoesntHave('translations', fn (Builder $translations) => $translations
+                            ->where('locale', $locale),
+                        );
+                    }
+                });
             }
-
-            $query->orWhere(fn (Builder $untranslated) => $untranslated
-                ->whereHas('translations', fn (Builder $translations) => $translations
-                    ->where('locale', $primary)
-                    ->where('slug', $slug),
-                )
-                ->whereDoesntHave('translations', fn (Builder $translations) => $translations
-                    ->where('locale', $locale),
-                ),
-            );
         });
     }
 

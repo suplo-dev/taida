@@ -11,11 +11,6 @@ class SlugGenerator
      * Builds a slug that is unique within a locale, appending a counter when
      * the desired one is taken. Rows belonging to `$ownerId` are ignored so
      * updating a record does not collide with its own slug.
-     *
-     * `$fallbackSources` are tried in order when `$source` yields nothing —
-     * see `base()` for why that is the normal case in one of the languages.
-     *
-     * @param  list<string>  $fallbackSources
      */
     public static function unique(
         string $table,
@@ -23,9 +18,8 @@ class SlugGenerator
         string $locale,
         string $source,
         ?int $ownerId = null,
-        array $fallbackSources = [],
     ): string {
-        $base = static::base($source, $fallbackSources);
+        $base = static::base($source);
         $slug = $base;
         $suffix = 2;
 
@@ -37,34 +31,21 @@ class SlugGenerator
     }
 
     /**
-     * `Str::slug()` keeps ASCII and drops everything else, so a title written
-     * entirely in Chinese characters reduces to an EMPTY string — 质量保证 has
-     * no ASCII in it at all. The old fallback was `Str::random(8)`, which is
-     * fine as a last resort for a title of pure punctuation but wrong for a
-     * whole language: every Chinese page would have carried an unreadable,
-     * unguessable address like `/zh/services/x7fk2p9q`, and it would have
-     * changed on every save.
+     * `Str::slug()` keeps ASCII and drops everything else, so a source with no
+     * ASCII in it at all reduces to an empty string. The random fallback is the
+     * last resort for a title that is nothing but punctuation or emoji.
      *
-     * So the record's own name in the other languages is asked first. The
-     * English title comes before the Vietnamese one (see the caller), which
-     * makes the Chinese pages read `/zh/services/quality-assurance` — the same
-     * words the /en URLs use, which is also how the section paths themselves
-     * are translated. An editor who wants pinyin can still type the slug by
-     * hand; this only decides what happens when the field is left blank.
-     *
-     * @param  list<string>  $fallbackSources
+     * It is deliberately NOT how Chinese pages get their address: a title in
+     * Han characters would land here every time, and every Chinese page would
+     * have carried an unreadable slug that changed on every save. Those locales
+     * copy the address they fall back to instead — see
+     * `app.mirrored_slug_locales` and `SyncsTranslations::mirroredSlug()`.
      */
-    private static function base(string $source, array $fallbackSources): string
+    private static function base(string $source): string
     {
-        foreach ([$source, ...$fallbackSources] as $candidate) {
-            $slug = Str::slug($candidate);
+        $slug = Str::slug($source);
 
-            if ($slug !== '') {
-                return $slug;
-            }
-        }
-
-        return Str::random(8);
+        return $slug !== '' ? $slug : Str::random(8);
     }
 
     private static function taken(string $table, string $foreignKey, string $locale, string $slug, ?int $ownerId): bool

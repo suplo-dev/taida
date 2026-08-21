@@ -1,20 +1,5 @@
-import type { ContentEntry, Locale } from '~~/shared/content-urls'
-import { DEFAULT_LOCALE, HREFLANG, LOCALES, translatedPaths } from '~~/shared/content-urls'
-
-/**
- * @nuxtjs/sitemap types `priority` as a union of the eleven values with one
- * decimal, not as `number` — anything else is rejected at build time. Naming it
- * once keeps that constraint in one place instead of at every call site.
- */
-type Priority = 0 | 0.1 | 0.2 | 0.3 | 0.4 | 0.5 | 0.6 | 0.7 | 0.8 | 0.9 | 1
-
-/** Listing and landing pages, which have no database record behind them. */
-const STATIC_PAGES: { paths: Record<Locale, string>, priority: Priority }[] = [
-  { paths: { vi: '/', en: '/en', zh: '/zh' }, priority: 1 },
-  { paths: { vi: '/dich-vu', en: '/en/services', zh: '/zh/services' }, priority: 0.9 },
-  { paths: { vi: '/nganh-nghe', en: '/en/industries', zh: '/zh/industries' }, priority: 0.9 },
-  { paths: { vi: '/tin-tuc', en: '/en/insights', zh: '/zh/insights' }, priority: 0.8 },
-]
+import type { ContentEntry, Locale, Priority } from '~~/shared/content-urls'
+import { DEFAULT_LOCALE, HREFLANG, LOCALES, STATIC_ROUTES, translatedPaths } from '~~/shared/content-urls'
 
 export default defineSitemapEventHandler(async () => {
   const config = useRuntimeConfig()
@@ -23,7 +8,9 @@ export default defineSitemapEventHandler(async () => {
     baseURL: config.apiBase,
   })
 
-  const urls = STATIC_PAGES.flatMap(page => localised(page.paths, null, page.priority))
+  const urls = STATIC_ROUTES
+    .filter(route => route.sitemap !== null)
+    .flatMap(route => localised(route.paths, null, route.sitemap as Priority))
 
   for (const entry of data) {
     if (!entry.slugs[DEFAULT_LOCALE]) {

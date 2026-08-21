@@ -4,6 +4,8 @@ namespace Database\Seeders;
 
 use App\Enums\ContentStatus;
 use App\Enums\MenuLocation;
+use App\Enums\MenuTarget;
+use App\Enums\SiteRoute;
 use App\Models\Category;
 use App\Models\Industry;
 use App\Models\MenuItem;
@@ -319,24 +321,32 @@ class ContentSeeder extends Seeder
         }
     }
 
+    /**
+     * Mục menu trỏ tới một đích, không phải một URL gõ tay — xem `MenuTarget`.
+     * Nhờ vậy phần dựng seed này không cần biết /dich-vu hay /en/services, và
+     * cũng không thể sinh ra một địa chỉ không tồn tại.
+     */
     private function seedMenus(): void
     {
+        $page = fn (string $key): array => [MenuTarget::Page, Page::where('key', $key)->value('id')];
+        $route = fn (SiteRoute $route): array => [MenuTarget::Route, $route];
+
         $header = [
-            ['vi' => ['Ngành nghề', '/nganh-nghe'], 'en' => ['Industries', '/en/industries']],
-            ['vi' => ['Dịch vụ', '/dich-vu'], 'en' => ['Services', '/en/services']],
-            ['vi' => ['Tin tức', '/tin-tuc'], 'en' => ['Insights', '/en/insights']],
-            ['vi' => ['Về chúng tôi', '/ve-chung-toi'], 'en' => ['About Us', '/en/about-us']],
+            [['Ngành nghề', 'Industries', '行业'], $route(SiteRoute::Industries)],
+            [['Dịch vụ', 'Services', '服务'], $route(SiteRoute::Services)],
+            [['Tin tức', 'Insights', '新闻'], $route(SiteRoute::Insights)],
+            [['Về chúng tôi', 'About Us', '关于我们'], $page('about-us')],
         ];
 
         $footer = [
-            ['vi' => ['Chính sách bảo mật', '/chinh-sach-bao-mat'], 'en' => ['Privacy Policy', '/en/privacy-policy']],
+            [['Chính sách bảo mật', 'Privacy Policy', '隐私政策'], $page('privacy-policy')],
         ];
 
         $utility = [
-            ['vi' => ['Trách nhiệm', '/trach-nhiem'], 'en' => ['Responsibility', '/en/responsibility']],
-            ['vi' => ['Tuyển dụng', '/tuyen-dung'], 'en' => ['Careers', '/en/careers']],
-            ['vi' => ['Báo chí & Truyền thông', '/bao-chi-truyen-thong'], 'en' => ['Press & Media', '/en/press-media']],
-            ['vi' => ['Đào tạo', '/dao-tao'], 'en' => ['Training', '/en/training']],
+            [['Trách nhiệm', 'Responsibility', '企业责任'], $page('responsibility')],
+            [['Tuyển dụng', 'Careers', '招聘'], $page('careers')],
+            [['Báo chí & Truyền thông', 'Press & Media', '新闻媒体'], $page('press')],
+            [['Đào tạo', 'Training', '培训'], $page('training')],
         ];
 
         $menus = [
@@ -346,14 +356,19 @@ class ContentSeeder extends Seeder
         ];
 
         foreach ($menus as $location => $items) {
-            foreach ($items as $order => $item) {
-                $menuItem = MenuItem::create(['location' => $location, 'sort_order' => $order]);
+            foreach ($items as $order => [$labels, [$type, $target]]) {
+                $menuItem = MenuItem::create([
+                    'location' => $location,
+                    'sort_order' => $order,
+                    'target_type' => $type,
+                    'target_route' => $type === MenuTarget::Route ? $target : null,
+                    'target_id' => $type === MenuTarget::Route ? null : $target,
+                ]);
 
-                foreach (['vi', 'en'] as $locale) {
+                foreach (['vi', 'en', 'zh'] as $index => $locale) {
                     $menuItem->translations()->create([
                         'locale' => $locale,
-                        'label' => $item[$locale][0],
-                        'url' => $item[$locale][1],
+                        'label' => $labels[$index],
                     ]);
                 }
             }
@@ -374,9 +389,11 @@ class ContentSeeder extends Seeder
                 'en' => ['title' => 'Total Quality. Assured.', 'subtitle' => 'We deliver total quality assurance with precision, pace and passion.'],
             ],
             'social' => [
-                'linkedin' => 'https://www.linkedin.com/',
-                'facebook' => 'https://www.facebook.com/',
-                'youtube' => 'https://www.youtube.com/',
+                'linkedin' => ['url' => 'https://www.linkedin.com/', 'enabled' => true],
+                'facebook' => ['url' => 'https://www.facebook.com/', 'enabled' => true],
+                'youtube' => ['url' => 'https://www.youtube.com/', 'enabled' => true],
+                'tiktok' => ['url' => 'https://www.tiktok.com/', 'enabled' => false],
+                'lemon8' => ['url' => 'https://www.lemon8-app.com/', 'enabled' => false],
             ],
         ];
 

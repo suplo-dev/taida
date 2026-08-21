@@ -128,7 +128,7 @@ onClickOutside(header, () => (openPanel.value = null))
         <NuxtLink
           v-for="link in chrome?.header.slice(2) ?? []"
           :key="link.id"
-          :to="link.url ?? '/'"
+          :to="link.href"
           class="flex items-center whitespace-nowrap border-b-2 border-transparent px-1.5 text-base font-semibold text-brand-50 transition hover:text-white lg:px-3.5 lg:text-lg xl:px-5"
           active-class="border-accent-400! text-white"
         >
@@ -272,7 +272,7 @@ v-for="group in ([
         <NuxtLink
           v-for="link in chrome?.header.slice(2) ?? []"
           :key="link.id"
-          :to="link.url ?? '/'"
+          :to="link.href"
           class="block py-3 text-base font-semibold text-brand-50"
         >
           {{ link.label }}
@@ -321,7 +321,7 @@ v-for="group in ([
           <NuxtLink
             v-for="link in chrome.utility"
             :key="link.id"
-            :to="link.url ?? '/'"
+            :to="link.href"
             :target="link.opensInNewTab ? '_blank' : undefined"
             :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
             class="block py-2 text-xs text-brand-200"

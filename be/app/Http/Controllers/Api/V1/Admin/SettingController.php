@@ -45,6 +45,28 @@ class SettingController extends Controller
         return array_merge($settings, array_map(
             fn (?Media $media): ?array => $media ? MediaResource::make($media)->resolve() : null,
             Setting::mediaFor($settings),
-        ));
+        ), [
+            // Đủ mọi mạng, kể cả mạng chưa ai điền: form dựng ô nhập từ chính
+            // danh sách này chứ không liệt kê tay, nên thêm một mạng ở backend
+            // là form có thêm ô ngay.
+            'social' => Setting::socialLinks($settings),
+            'contactQr' => $this->contactQr($settings),
+        ]);
+    }
+
+    /**
+     * Mã QR liên hệ với ảnh bung thành bản ghi media để bộ chọn có hình xem
+     * trước. Lượt lưu vẫn gửi lại mỗi id — xem SettingRequest.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return list<array{label: string, enabled: bool, media: array<string, mixed>}>
+     */
+    private function contactQr(array $settings): array
+    {
+        return array_map(fn (array $item): array => [
+            'label' => $item['label'],
+            'enabled' => $item['enabled'],
+            'media' => MediaResource::make($item['media'])->resolve(),
+        ], Setting::mediaListsFor($settings)['contactQr']);
     }
 }

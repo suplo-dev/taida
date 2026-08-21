@@ -72,11 +72,11 @@ class ServiceAdminTest extends TestCase
     }
 
     /**
-     * `Str::slug()` keeps ASCII only, so a Chinese title reduces to an empty
-     * string and used to land on `Str::random(8)` — an unreadable address that
-     * changed on every save. The record's English name stands in instead.
+     * Chinese has no address of its own: it answers at the English one. See
+     * `app.mirrored_slug_locales`, and ChineseSlugTest for the rule in full —
+     * this only checks that services obey it like everything else.
      */
-    public function test_a_chinese_title_borrows_its_slug_from_the_english_name(): void
+    public function test_a_chinese_translation_answers_at_the_english_slug(): void
     {
         $this->actingAs($this->editor)
             ->postJson('/api/v1/admin/services', $this->payload([
@@ -94,11 +94,16 @@ class ServiceAdminTest extends TestCase
     }
 
     /**
-     * Only a title with NO ASCII in it borrows from another language. A title
-     * that mixes the two keeps its own: "ISO 9001质量管理" is still recognisable
-     * as `iso-9001`, and it is what the editor actually typed.
+     * Mirroring is unconditional, not a rescue for titles that slugify to
+     * nothing. A Chinese title with usable ASCII in it — "ISO 9001质量管理"
+     * would give `iso-9001` — is mirrored just the same.
+     *
+     * The point is not the character set, it is that /zh/iso-certification must
+     * be one address whether or not the record has been translated. Letting a
+     * mixed title keep `iso-9001` would move the page the moment someone typed
+     * a Chinese name for it, breaking every link already pointing at it.
      */
-    public function test_a_mixed_title_keeps_the_ascii_it_already_has(): void
+    public function test_a_chinese_title_is_mirrored_even_when_it_would_slugify_on_its_own(): void
     {
         $this->actingAs($this->editor)
             ->postJson('/api/v1/admin/services', $this->payload([
@@ -111,13 +116,13 @@ class ServiceAdminTest extends TestCase
             ->assertCreated();
 
         $this->assertSame(
-            'iso-9001',
+            'iso-certification',
             Service::query()->sole()->translations()->where('locale', 'zh')->sole()->slug,
         );
     }
 
-    /** Without an English name to borrow, the Vietnamese one is next. */
-    public function test_a_chinese_title_falls_back_to_the_vietnamese_name_when_english_is_blank(): void
+    /** Without an English translation to mirror, the Vietnamese one is next. */
+    public function test_a_chinese_translation_falls_back_to_the_vietnamese_slug_when_english_is_blank(): void
     {
         $this->actingAs($this->editor)
             ->postJson('/api/v1/admin/services', $this->payload([

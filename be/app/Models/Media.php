@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\Concerns\RendersPublicOutput;
+use App\Support\Locales;
 use Database\Factories\MediaFactory;
 use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -88,12 +89,15 @@ class Media extends Model implements RendersPublicOutput
         );
     }
 
-    /** Alternative text for a locale, falling back to the primary locale. */
+    /** Alternative text for a locale, falling back down its chain. */
     public function altFor(?string $locale = null): ?string
     {
-        $locale ??= app()->getLocale();
-        $primary = config('app.supported_locales')[0];
+        foreach (Locales::chain($locale) as $candidate) {
+            if (isset($this->alt[$candidate])) {
+                return $this->alt[$candidate];
+            }
+        }
 
-        return $this->alt[$locale] ?? $this->alt[$primary] ?? null;
+        return null;
     }
 }

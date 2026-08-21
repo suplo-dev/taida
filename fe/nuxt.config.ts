@@ -2,7 +2,8 @@
 // `$fetch` là auto-import của runtime Nuxt, không có trong tiến trình đọc file
 // cấu hình này — nạp thẳng từ ofetch.
 import { ofetch } from 'ofetch'
-import { allPaths, type ContentEntry } from './shared/content-urls'
+import { checkMenuLinks } from './build/check-menu-links'
+import { allPaths, type ContentEntry, STATIC_ROUTES } from './shared/content-urls'
 
 export default defineNuxtConfig({
   compatibilityDate: '2025-07-15',
@@ -78,9 +79,11 @@ export default defineNuxtConfig({
     compressPublicAssets: { gzip: true, brotli: true },
 
     prerender: {
-      // Mỗi gốc ngôn ngữ được gieo sẵn; phần còn lại đi theo link từ đó, cộng
-      // với danh sách lấy thẳng từ API ở hook bên dưới.
-      routes: ['/', '/en', '/zh'],
+      // Trang chủ và các trang danh sách được gieo sẵn ở cả ba ngôn ngữ; phần
+      // còn lại đi theo link từ đó, cộng với danh sách lấy thẳng từ API ở hook
+      // bên dưới. Gieo thay vì để crawler tự tìm, vì đây cũng là tập địa chỉ mà
+      // `checkMenuLinks` đối chiếu — nó phải biết trước khi crawl bắt đầu.
+      routes: STATIC_ROUTES.flatMap(route => Object.values(route.paths)),
       crawlLinks: true,
       // A link that 404s during the crawl means a page really is unreachable —
       // shipping the build anyway would put that broken link in front of
@@ -99,13 +102,17 @@ export default defineNuxtConfig({
        * có file — và người đọc bấm vào từ kết quả tìm kiếm nhận 404 của hosting.
        * Với dữ liệu thật (hàng chục bài) thì đó là hàng chục trang.
        *
-       * Thêm cả địa chỉ của bản CHƯA dịch (slug rơi về tiếng Việt): trang danh
-       * sách dưới /zh liên kết tới chúng, và link đó phải mở được khi tải thẳng
-       * chứ không chỉ khi điều hướng trong trình duyệt.
+       * Thêm cả địa chỉ của bản CHƯA dịch (slug mượn của ngôn ngữ khác): trang
+       * danh sách dưới /zh liên kết tới chúng, và link đó phải mở được khi tải
+       * thẳng chứ không chỉ khi điều hướng trong trình duyệt.
        *
        * API không chạy thì bước này ném lỗi và cả bản build dừng — đúng như
        * mong muốn: bản build vốn đọc API cho từng trang, im lặng bỏ qua chỉ tạo
        * ra một bản build thiếu nội dung mà không ai biết.
+       *
+       * Cuối cùng là soát link menu, ngay tại đây vì đây là lúc đã biết đủ tập
+       * route sắp dựng và vẫn còn trước bước crawl — thứ vừa tốn vài phút vừa
+       * báo lỗi bằng vài nghìn dòng "Linked from".
        */
       async 'prerender:routes'(routes) {
         const base = process.env.NUXT_PUBLIC_API_BASE || 'http://localhost:8000'
@@ -118,6 +125,10 @@ export default defineNuxtConfig({
         }
 
         console.info(`[prerender] ${data.length} bản ghi từ API → ${routes.size} route`)
+
+        await checkMenuLinks(routes, base)
+
+        console.info('[prerender] link menu: OK')
       },
     },
   },

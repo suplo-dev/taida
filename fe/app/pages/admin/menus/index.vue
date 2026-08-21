@@ -1,11 +1,15 @@
 <script setup lang="ts">
-import type { AdminMenuItem, Envelope, Locale } from '~/types/api'
+import type { AdminMenuItem, Envelope, Locale, MenuTargetOption } from '~/types/api'
 
 definePageMeta({ layout: 'admin', middleware: 'auth' })
 
 interface DraftItem {
-  translations: Record<Locale, { label: string, url: string }>
+  translations: Record<Locale, { label: string }>
   opens_in_new_tab: boolean
+  target_type: AdminMenuItem['target_type']
+  target_route: AdminMenuItem['target_route']
+  target_id: AdminMenuItem['target_id']
+  external_url: AdminMenuItem['external_url']
   children: DraftItem[]
 }
 
@@ -25,8 +29,14 @@ const items = ref<DraftItem[]>([])
 
 function blank(): DraftItem {
   return {
-    translations: emptyTranslations({ label: '', url: '' }),
+    translations: emptyTranslations({ label: '' }),
     opens_in_new_tab: false,
+    // Mục mới chưa có đích: người sửa gõ nhãn trước rồi mới chọn nơi tới, và
+    // một mục chưa xong thì không hiện trên site chứ không thành link gãy.
+    target_type: 'route',
+    target_route: null,
+    target_id: null,
+    external_url: null,
     children: [],
   }
 }
@@ -36,14 +46,30 @@ function toDraft(item: AdminMenuItem): DraftItem {
 
   for (const locale of SUPPORTED_LOCALES) {
     draft.translations[locale].label = item.translations?.[locale]?.label ?? ''
-    draft.translations[locale].url = item.translations?.[locale]?.url ?? ''
   }
 
   draft.opens_in_new_tab = item.opens_in_new_tab
+  draft.target_type = item.target_type
+  draft.target_route = item.target_route
+  draft.target_id = item.target_id
+  draft.external_url = item.external_url
   draft.children = (item.children ?? []).map(toDraft)
 
   return draft
 }
+
+/**
+ * Mọi nơi một mục menu được phép trỏ tới, lấy một lần.
+ *
+ * Cả site là vài chục bản ghi, nên danh sách chỉ vài KB và bộ chọn lọc ngay
+ * trong trình duyệt — không debounce, không spinner, không phụ thuộc mạng khi
+ * đang sửa. Đến lúc tin tức lên hàng trăm bài thì chuyển sang tìm phía API bằng
+ * `ignore-filter` của USelectMenu.
+ */
+const { data: targetOptions } = await useAsyncData(
+  'admin:menu-targets',
+  async () => (await api<Envelope<MenuTargetOption[]>>('/admin/menu-targets')).data,
+)
 
 async function load() {
   const { data } = await api<Envelope<AdminMenuItem[]>>(`/admin/menus/${location.value}`)
@@ -125,7 +151,16 @@ async function submit() {
             <div v-for="locale in SUPPORTED_LOCALES" :key="locale" class="space-y-2">
               <p class="text-xs font-medium uppercase tracking-wide text-neutral-400">{{ LOCALE_LABELS[locale] }}</p>
               <UInput v-model="item.translations[locale].label" placeholder="Nhãn hiển thị" class="w-full" />
-              <UInput v-model="item.translations[locale].url" placeholder="/duong-dan" class="w-full" />
+            </div>
+
+            <!--
+              Một đích cho cả ba ngôn ngữ, không phải ba ô URL. Địa chỉ của từng
+              ngôn ngữ được dựng từ chính bản ghi lúc render, nên chúng không thể
+              lệch nhau — và đổi slug sau này thì menu tự đúng theo.
+            -->
+            <div class="sm:col-span-2">
+              <p class="mb-1.5 text-xs font-medium uppercase tracking-wide text-neutral-400">Liên kết tới</p>
+              <AdminMenuTargetPicker :target="item" :options="targetOptions ?? []" @update="Object.assign(item, $event)" />
             </div>
           </div>
 
@@ -146,7 +181,9 @@ async function submit() {
             <div class="grid flex-1 gap-3 sm:grid-cols-2">
               <div v-for="locale in SUPPORTED_LOCALES" :key="locale" class="space-y-2">
                 <UInput v-model="child.translations[locale].label" :placeholder="`Nhãn (${locale})`" size="sm" class="w-full" />
-                <UInput v-model="child.translations[locale].url" :placeholder="`/duong-dan (${locale})`" size="sm" class="w-full" />
+              </div>
+              <div class="sm:col-span-2">
+                <AdminMenuTargetPicker :target="child" :options="targetOptions ?? []" size="sm" @update="Object.assign(child, $event)" />
               </div>
             </div>
             <UButton size="xs" variant="ghost" color="error" icon="i-lucide-trash-2" @click="item.children.splice(childIndex, 1)" />

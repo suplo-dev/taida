@@ -5,12 +5,12 @@ const { data: chrome } = await useSiteData()
 
 const year = new Date().getFullYear()
 
-const socialIcons: Record<string, string> = {
-  linkedin: 'i-lucide-linkedin',
-  facebook: 'i-lucide-facebook',
-  youtube: 'i-lucide-youtube',
-  x: 'i-lucide-twitter',
-}
+/**
+ * Endpoint công khai đã bỏ những mạng bị tắt hoặc chưa có địa chỉ, nên ở đây chỉ
+ * còn việc kiểm tra danh sách có rỗng không — rỗng thì cả hàng icon biến mất chứ
+ * không để lại một khoảng trống giữa chân trang.
+ */
+const socialLinks = computed(() => Object.entries(chrome.value?.settings.social ?? {}))
 </script>
 
 <template>
@@ -35,6 +35,26 @@ const socialIcons: Record<string, string> = {
               <a :href="`mailto:${chrome.settings.email}`" class="hover:text-white">{{ chrome.settings.email }}</a>
             </li>
           </ul>
+
+          <!--
+            Mã QR đứng cạnh hotline và email vì nó cũng là một cách liên hệ:
+            người đọc trên máy tính quét bằng điện thoại, người đọc trên điện
+            thoại chạm để phóng to. Nhãn nằm dưới ảnh chứ không nằm trong ảnh —
+            ảnh QR nào cũng chỉ là ô đen trắng, không tự nói nó là Zalo hay WeChat.
+          -->
+          <ul v-if="chrome?.settings.contactQr?.length" class="mt-6 flex flex-wrap gap-4">
+            <li v-for="qr in chrome.settings.contactQr" :key="qr.label" class="text-center">
+              <NuxtImg
+                :src="qr.media.url"
+                :alt="qr.media.alt ?? qr.label"
+                width="96"
+                height="96"
+                loading="lazy"
+                class="size-24 rounded bg-white object-contain p-1"
+              />
+              <p class="mt-1.5 text-xs">{{ qr.label }}</p>
+            </li>
+          </ul>
         </div>
 
         <nav>
@@ -50,7 +70,7 @@ const socialIcons: Record<string, string> = {
           <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-white">{{ t('nav.about') }}</h2>
           <ul class="space-y-2 text-sm">
             <li v-for="link in chrome.footer" :key="link.id">
-              <NuxtLink :to="link.url ?? '/'" class="hover:text-white">{{ link.label }}</NuxtLink>
+              <NuxtLink :to="link.href" class="hover:text-white">{{ link.label }}</NuxtLink>
             </li>
           </ul>
         </nav>
@@ -59,9 +79,9 @@ const socialIcons: Record<string, string> = {
       <div class="mt-12 flex flex-col gap-4 border-t border-primary-500/40 pt-6 sm:flex-row sm:items-center sm:justify-between">
         <p class="text-xs">© {{ year }} TAIDA. {{ t('footer.rights') }}</p>
 
-        <div v-if="chrome?.settings.social" class="flex items-center gap-3">
+        <div v-if="socialLinks.length" class="flex items-center gap-3">
           <a
-            v-for="(url, network) in chrome.settings.social"
+            v-for="[network, url] in socialLinks"
             :key="network"
             :href="url"
             target="_blank"
@@ -69,7 +89,7 @@ const socialIcons: Record<string, string> = {
             :aria-label="network"
             class="text-primary-300 transition hover:text-white"
           >
-            <UIcon :name="socialIcons[network] ?? 'i-lucide-link'" class="size-5" />
+            <SiteSocialIcon :network="network" class="size-5" />
           </a>
         </div>
       </div>

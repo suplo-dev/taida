@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api\V1\Admin;
 
 use App\Enums\MenuLocation;
+use App\Enums\MenuTarget;
 use App\Http\Controllers\Api\V1\Admin\Concerns\SyncsTranslations;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\MenuRequest;
@@ -59,11 +60,20 @@ class MenuController extends Controller
      */
     private function createItem(MenuLocation $location, array $data, int $order, ?int $parentId): MenuItem
     {
+        $type = MenuTarget::tryFrom($data['target_type'] ?? '') ?? MenuTarget::Route;
+
         $item = MenuItem::create([
             'location' => $location,
             'parent_id' => $parentId,
             'sort_order' => $order,
             'opens_in_new_tab' => (bool) ($data['opens_in_new_tab'] ?? false),
+            'target_type' => $type,
+            // Chỉ giữ cột thuộc về loại đích đang chọn. Đổi từ "trang" sang
+            // "liên kết ngoài" mà còn sót `target_id` thì bản ghi tự mâu thuẫn,
+            // và chỗ đọc sau này sẽ tin vào cột nào là chuyện may rủi.
+            'target_route' => $type === MenuTarget::Route ? ($data['target_route'] ?? null) : null,
+            'target_id' => $type->isContent() ? ($data['target_id'] ?? null) : null,
+            'external_url' => $type === MenuTarget::External ? ($data['external_url'] ?? null) : null,
         ]);
 
         $this->syncTranslations($item, $data['translations'] ?? [], 'label', hasSlug: false);

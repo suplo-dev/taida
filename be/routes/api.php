@@ -73,6 +73,9 @@ Route::prefix('v1')->name('api.v1.')->group(function (): void {
             Route::post('/media', [Admin\MediaController::class, 'store'])->name('media.store');
 
             Route::middleware('can:manage-site')->group(function (): void {
+                // Trước `/menus/{location}`, nếu không "menu-targets" sẽ bị nuốt
+                // làm một location và trả 404.
+                Route::get('/menu-targets', Admin\MenuTargetController::class)->name('menu-targets');
                 Route::get('/menus/{location}', [Admin\MenuController::class, 'show'])->name('menus.show');
                 Route::put('/menus/{location}', [Admin\MenuController::class, 'update'])->name('menus.update');
 

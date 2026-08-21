@@ -10,6 +10,7 @@ use App\Models\Industry;
 use App\Models\Post;
 use App\Models\Service;
 use App\Support\ContentCache;
+use App\Support\Locales;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -71,34 +72,36 @@ class SearchController extends Controller
     /**
      * Restricts a model query to records matching the term in the active locale.
      *
-     * A record with NOTHING in that locale is matched on its primary-locale text
-     * instead — the same rule the rest of the site runs on: such a record is
-     * listed and readable under /zh in Vietnamese, so a search that cannot find
-     * it makes the search box look broken rather than the translation look
-     * missing. Records that DO have the locale are matched only on it, so
-     * searching in English never surfaces a hit on Vietnamese text the reader
-     * will not see.
+     * A record with NOTHING in that locale is matched on the text of the
+     * nearest locale it borrows from — the same chain the rest of the site runs
+     * on: such a record is listed and readable under /zh in English, so a
+     * search that cannot find it makes the search box look broken rather than
+     * the translation look missing. Records that DO have the locale are matched
+     * only on it, so searching in English never surfaces a hit on Vietnamese
+     * text the reader will not see.
      *
      * @param  list<string>  $columns
      */
     private function searchable(Builder $query, string $term, array $columns): void
     {
-        $locale = app()->getLocale();
-        $primary = config('app.supported_locales')[0];
+        $chain = Locales::chain();
 
-        $query->where(function (Builder $query) use ($term, $columns, $locale, $primary): void {
-            $query->whereHas('translations', $this->matches($term, $columns, $locale));
+        $query->where(function (Builder $query) use ($term, $columns, $chain): void {
+            foreach ($chain as $index => $candidate) {
+                // A row in any nearer locale is what the reader actually sees,
+                // so this step must not match those records.
+                $nearer = array_slice($chain, 0, $index);
 
-            if ($locale === $primary) {
-                return;
+                $query->orWhere(function (Builder $match) use ($term, $columns, $candidate, $nearer): void {
+                    $match->whereHas('translations', $this->matches($term, $columns, $candidate));
+
+                    foreach ($nearer as $locale) {
+                        $match->whereDoesntHave('translations', fn (Builder $translations) => $translations
+                            ->where('locale', $locale),
+                        );
+                    }
+                });
             }
-
-            $query->orWhere(fn (Builder $untranslated) => $untranslated
-                ->whereHas('translations', $this->matches($term, $columns, $primary))
-                ->whereDoesntHave('translations', fn (Builder $translations) => $translations
-                    ->where('locale', $locale),
-                ),
-            );
         });
     }
 

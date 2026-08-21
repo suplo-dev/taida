@@ -63,14 +63,47 @@ class ContentApiTest extends TestCase
     }
 
     /**
-     * Trang tĩnh đi qua một truy vấn riêng (còn tra theo `key`), nên nó phải được
-     * nhắc lại rằng luật rơi về locale chính cũng áp dụng ở đây: menu tiếng Trung
-     * trỏ tới slug tiếng Việt khi trang chưa dịch, và bản build tải chính link đó.
+     * Trang tĩnh đi qua một truy vấn riêng (còn tra theo `key`), nên luật rơi về
+     * ngôn ngữ khác phải được nhắc lại ở đây: bản build tải chính những link mà
+     * menu và bộ chuyển ngôn ngữ sinh ra, và một link hụt là hỏng cả lần publish.
+     *
+     * Tiếng Trung mượn tiếng Anh trước, nên trang mới có bản Việt + Anh trả lời ở
+     * slug tiếng Anh — /zh/about-us, cùng slug với /en/about-us.
      */
-    public function test_a_page_falls_back_to_the_primary_slug_when_untranslated(): void
+    public function test_an_untranslated_page_answers_at_the_english_slug_in_chinese(): void
     {
         $page = Page::factory()->create(['key' => 'about-us']);
         $page->translations()->where('locale', 'zh')->delete();
+        $enSlug = $page->translations()->where('locale', 'en')->sole()->slug;
+        $enTitle = $page->translations()->where('locale', 'en')->sole()->title;
+
+        $this->getJson("/api/v1/pages/{$enSlug}?locale=zh")
+            ->assertOk()
+            ->assertJsonPath('data.key', 'about-us')
+            // Địa chỉ tiếng Anh thì nội dung cũng phải tiếng Anh: hai thứ đi
+            // chung một chuỗi dự phòng, lệch nhau là URL tiếng Anh mà chữ tiếng Việt.
+            ->assertJsonPath('data.title', $enTitle);
+    }
+
+    /**
+     * Chỉ một địa chỉ cho mỗi bản ghi trong mỗi ngôn ngữ. Nếu slug tiếng Việt
+     * cũng mở được dưới /zh thì cùng một nội dung có hai URL tiếng Trung, và bản
+     * build dựng cả hai.
+     */
+    public function test_the_vietnamese_slug_does_not_answer_in_chinese_when_english_exists(): void
+    {
+        $page = Page::factory()->create(['key' => 'about-us']);
+        $page->translations()->where('locale', 'zh')->delete();
+        $viSlug = $page->translations()->where('locale', 'vi')->sole()->slug;
+
+        $this->getJson("/api/v1/pages/{$viSlug}?locale=zh")->assertNotFound();
+    }
+
+    /** Hết đường mượn tiếng Anh thì mới rơi tiếp về tiếng Việt. */
+    public function test_a_page_falls_back_to_the_primary_slug_when_english_is_missing_too(): void
+    {
+        $page = Page::factory()->create(['key' => 'about-us']);
+        $page->translations()->whereIn('locale', ['en', 'zh'])->delete();
         $viSlug = $page->translations()->where('locale', 'vi')->sole()->slug;
 
         $this->getJson("/api/v1/pages/{$viSlug}?locale=zh")
@@ -219,14 +252,33 @@ class ContentApiTest extends TestCase
     }
 
     /**
-     * Bản chưa dịch vẫn hiện trong danh sách dưới /zh bằng tiếng Việt, nên tìm nó
-     * bằng chính chữ đang hiển thị phải ra. Ngược lại, bản ĐÃ dịch chỉ tìm được
-     * bằng chữ tiếng Trung — người đọc không bao giờ thấy tên tiếng Việt của nó.
+     * Bản chưa dịch vẫn hiện trong danh sách dưới /zh — bằng tiếng Anh, vì tiếng
+     * Trung mượn tiếng Anh trước — nên tìm nó bằng chính chữ đang hiển thị phải
+     * ra, và bằng chữ tiếng Việt mà người đọc không thấy thì không.
+     * Ngược lại, bản ĐÃ dịch chỉ tìm được bằng chữ tiếng Trung.
      */
-    public function test_search_falls_back_to_the_primary_locale_for_untranslated_records(): void
+    public function test_search_falls_back_down_the_locale_chain_for_untranslated_records(): void
     {
         $untranslated = Service::factory()->create();
         $untranslated->translations()->where('locale', 'zh')->delete();
+        $viName = $untranslated->translations()->where('locale', 'vi')->sole()->name;
+        $enName = $untranslated->translations()->where('locale', 'en')->sole()->name;
+
+        $this->getJson('/api/v1/search?q='.urlencode($enName).'&locale=zh')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.services')
+            ->assertJsonPath('data.services.0.id', $untranslated->id);
+
+        $this->getJson('/api/v1/search?q='.urlencode($viName).'&locale=zh')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.services');
+    }
+
+    /** Hết tiếng Anh thì tiếng Trung mới tìm trên chữ tiếng Việt. */
+    public function test_search_reaches_the_primary_locale_when_english_is_missing_too(): void
+    {
+        $untranslated = Service::factory()->create();
+        $untranslated->translations()->whereIn('locale', ['en', 'zh'])->delete();
         $viName = $untranslated->translations()->where('locale', 'vi')->sole()->name;
 
         $this->getJson('/api/v1/search?q='.urlencode($viName).'&locale=zh')

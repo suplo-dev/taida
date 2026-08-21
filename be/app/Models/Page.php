@@ -31,10 +31,4 @@ class Page extends Model implements RendersPublicOutput
     {
         return $this->belongsTo(Media::class, 'cover_media_id');
     }
-
-    /** Pages carry no schedule, so publication is purely the status flag. */
-    public function isPublished(): bool
-    {
-        return $this->status === ContentStatus::Published;
-    }
 }

@@ -6,6 +6,36 @@ definePageMeta({ layout: 'admin', middleware: 'auth' })
 /** Raw settings map — localised values are objects keyed by locale. */
 type SettingsMap = Record<string, unknown>
 
+/** Một mạng xã hội trong cấu hình: địa chỉ, và công tắc quyết định site có hiện nó không. */
+interface SocialLink {
+  url: string
+  enabled: boolean
+}
+
+/** Một hàng mã QR đang sửa. `preview` chỉ phục vụ bộ chọn ảnh, không gửi lên. */
+interface QrRow {
+  /**
+   * Khoá của `v-for`, không lưu xuống database. Dùng chỉ số mảng làm khoá thì
+   * xoá một hàng ở giữa sẽ khiến Vue dùng lại đúng bộ chọn ảnh đó cho hàng phía
+   * sau, mà bộ chọn giữ ảnh đang chọn trong state riêng — hàng mới hiện ảnh của
+   * hàng vừa bị xoá.
+   */
+  key: number
+  label: string
+  enabled: boolean
+  media: number | null
+  preview: Media | null
+}
+
+/** Nhãn hiện trên form; mạng nào không có ở đây thì lấy nguyên tên khoá. */
+const SOCIAL_LABELS: Record<string, string> = {
+  linkedin: 'LinkedIn',
+  facebook: 'Facebook',
+  youtube: 'YouTube',
+  tiktok: 'TikTok',
+  lemon8: 'Lemon8',
+}
+
 const api = useApi()
 const toast = useToast()
 const { user } = useAuth()
@@ -52,19 +82,50 @@ const form = reactive({
     subtitle: '',
     ...((settings.value?.hero as Record<string, object>)?.[locale] ?? {}),
   }])) as Record<Locale, { title: string, subtitle: string }>,
-  social: {
-    linkedin: '',
-    facebook: '',
-    youtube: '',
-    ...(settings.value?.social as object ?? {}),
-  } as Record<string, string>,
+  // Endpoint admin trả về đủ mọi mạng — kể cả mạng chưa ai điền — nên form dựng
+  // ô nhập từ chính nó. Thêm một mạng mới ở backend là có ô ngay, không phải sửa
+  // hai chỗ rồi quên một.
+  social: Object.fromEntries(
+    Object.entries((settings.value?.social as Record<string, SocialLink>) ?? {})
+      .map(([network, link]) => [network, { url: link?.url ?? '', enabled: link?.enabled ?? false }]),
+  ) as Record<string, SocialLink>,
 })
 
+/**
+ * Mã QR là một danh sách nên nó nằm ngoài `form`: mỗi hàng còn phải giữ thêm
+ * bản ghi media để bộ chọn có hình xem trước, thứ không được gửi lên khi lưu.
+ */
+let nextQrKey = 0
+
+const qrCodes = ref<QrRow[]>(
+  ((settings.value?.contactQr as Array<{ label: string, enabled: boolean, media: Media }>) ?? [])
+    .map(item => ({ key: nextQrKey++, label: item.label, enabled: item.enabled, media: item.media.id, preview: item.media })),
+)
+
+function addQrCode() {
+  qrCodes.value.push({ key: nextQrKey++, label: '', enabled: true, media: null, preview: null })
+}
+
+function removeQrCode(index: number) {
+  qrCodes.value.splice(index, 1)
+}
+
 async function submit() {
+  // Backend từ chối hàng thiếu ảnh hoặc thiếu nhãn, nhưng lỗi của trang này chỉ
+  // hiện thành một dòng toast không gắn vào ô nào — chặn ở đây thì người dùng
+  // biết phải sửa cái gì.
+  if (qrCodes.value.some(qr => !qr.label.trim() || !qr.media)) {
+    toast.add({ title: 'Mỗi mã QR cần một tên gọi và một ảnh.', color: 'error' })
+
+    return
+  }
+
   saving.value = true
 
+  const contactQr = qrCodes.value.map(qr => ({ label: qr.label.trim(), enabled: qr.enabled, media: qr.media }))
+
   try {
-    await api('/admin/settings', { method: 'PUT', body: { settings: { ...form } } })
+    await api('/admin/settings', { method: 'PUT', body: { settings: { ...form, contactQr } } })
     toast.add({ title: 'Đã lưu cấu hình', color: 'success' })
   }
   catch (error) {
@@ -79,7 +140,7 @@ async function submit() {
 
 <template>
   <form @submit.prevent="submit">
-    <AdminPageHeader title="Cấu hình" subtitle="Logo, thông tin liên hệ, ảnh nền và khẩu hiệu trang chủ, mạng xã hội.">
+    <AdminPageHeader title="Cấu hình" subtitle="Logo, thông tin liên hệ, mã QR, ảnh nền và khẩu hiệu trang chủ, mạng xã hội.">
       <template #actions>
         <UButton type="submit" :loading="saving" icon="i-lucide-save" :disabled="user?.role !== 'admin'">
           Lưu
@@ -117,10 +178,63 @@ async function submit() {
 
       <section class="space-y-4 rounded-lg border border-neutral-200 bg-white p-6">
         <h2 class="text-sm font-semibold text-neutral-700">Mạng xã hội</h2>
+        <p class="-mt-2 text-xs text-neutral-500">Chỉ những mạng đang bật mới hiện ở chân trang. Tắt là ẩn khỏi site, địa chỉ vẫn giữ nguyên ở đây.</p>
 
-        <AdminFormField v-for="network in ['linkedin', 'facebook', 'youtube']" :key="network" :label="network">
-          <UInput v-model="form.social[network]" placeholder="https://" class="w-full" />
+        <AdminFormField
+          v-for="(link, network) in form.social"
+          :key="network"
+          :label="SOCIAL_LABELS[network] ?? network"
+        >
+          <div class="flex items-center gap-3">
+            <UInput v-model="link.url" placeholder="https://" class="flex-1" />
+            <USwitch v-model="link.enabled" :aria-label="`Hiện ${SOCIAL_LABELS[network] ?? network} trên site`" />
+          </div>
         </AdminFormField>
+      </section>
+
+      <section class="space-y-4 rounded-lg border border-neutral-200 bg-white p-6 lg:col-span-2">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="text-sm font-semibold text-neutral-700">Mã QR liên hệ</h2>
+            <p class="mt-1 text-xs text-neutral-500">
+              Hiện ở chân trang, cạnh hotline và email. Tên gọi nằm dưới ảnh — ảnh QR nào cũng chỉ là ô đen trắng,
+              người xem không tự biết đâu là Zalo, đâu là WeChat. Tắt công tắc là ẩn khỏi site mà vẫn giữ ảnh ở đây.
+            </p>
+          </div>
+
+          <UButton size="xs" variant="soft" icon="i-lucide-plus" @click="addQrCode">
+            Thêm mã QR
+          </UButton>
+        </div>
+
+        <p v-if="qrCodes.length === 0" class="rounded border border-dashed border-neutral-300 py-6 text-center text-sm text-neutral-500">
+          Chưa có mã QR nào.
+        </p>
+
+        <div v-else class="grid gap-4 sm:grid-cols-2">
+          <div v-for="(qr, index) in qrCodes" :key="qr.key" class="flex gap-4 rounded-lg border border-neutral-200 p-4">
+            <AdminMediaPicker v-model="qr.media" :preview="qr.preview" />
+
+            <div class="flex-1 space-y-3">
+              <AdminFormField label="Tên gọi">
+                <UInput v-model="qr.label" placeholder="Zalo, WeChat…" class="w-full" />
+              </AdminFormField>
+
+              <div class="flex items-center justify-between">
+                <USwitch v-model="qr.enabled" label="Hiện trên site" />
+
+                <UButton
+                  size="xs"
+                  variant="ghost"
+                  color="error"
+                  icon="i-lucide-trash-2"
+                  :aria-label="`Xoá mã QR ${qr.label || index + 1}`"
+                  @click="removeQrCode(index)"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <section class="space-y-5 rounded-lg border border-neutral-200 bg-white p-6 lg:col-span-2">

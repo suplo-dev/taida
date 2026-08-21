@@ -7,6 +7,7 @@ use App\Http\Resources\MediaResource;
 use App\Models\Media;
 use App\Models\Setting;
 use App\Support\ContentCache;
+use App\Support\Locales;
 use Illuminate\Http\JsonResponse;
 
 class SettingController extends Controller
@@ -22,7 +23,10 @@ class SettingController extends Controller
                 ->map(fn (mixed $value) => $this->localise($value))
                 ->all();
 
-            return array_merge($settings, $this->media($settings));
+            return array_merge($settings, $this->media($settings), [
+                'social' => $this->social($settings),
+                'contactQr' => $this->contactQr($settings),
+            ]);
         });
 
         return response()->json(['data' => $settings]);
@@ -44,6 +48,40 @@ class SettingController extends Controller
     }
 
     /**
+     * Chỉ những mạng đang bật và có địa chỉ mới ra tới site, và ra dưới dạng
+     * `mạng => địa chỉ`: chân trang không cần biết gì về công tắc bật/tắt, nó
+     * chỉ vẽ những gì được đưa.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return array<string, string>
+     */
+    private function social(array $settings): array
+    {
+        return collect(Setting::socialLinks($settings))
+            ->filter(fn (array $link): bool => $link['enabled'] && $link['url'] !== '')
+            ->map(fn (array $link): string => $link['url'])
+            ->all();
+    }
+
+    /**
+     * Mã QR liên hệ đang bật, ảnh đã bung sẵn thành bản ghi media.
+     *
+     * @param  array<string, mixed>  $settings
+     * @return list<array{label: string, media: array<string, mixed>}>
+     */
+    private function contactQr(array $settings): array
+    {
+        return collect(Setting::mediaListsFor($settings)['contactQr'])
+            ->filter(fn (array $item): bool => $item['enabled'])
+            ->map(fn (array $item): array => [
+                'label' => $item['label'],
+                'media' => MediaResource::make($item['media'])->resolve(),
+            ])
+            ->values()
+            ->all();
+    }
+
+    /**
      * Picks the active locale out of a value keyed by locale, leaving values
      * that are not localised (a hotline, a URL) untouched.
      */
@@ -53,12 +91,16 @@ class SettingController extends Controller
             return $value;
         }
 
-        $locales = config('app.supported_locales');
-
-        if (array_intersect(array_keys($value), $locales) === []) {
+        if (array_intersect(array_keys($value), Locales::supported()) === []) {
             return $value;
         }
 
-        return $value[app()->getLocale()] ?? $value[$locales[0]] ?? null;
+        foreach (Locales::chain() as $candidate) {
+            if (isset($value[$candidate])) {
+                return $value[$candidate];
+            }
+        }
+
+        return null;
     }
 }

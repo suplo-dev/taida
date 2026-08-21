@@ -4,9 +4,9 @@ namespace App\Models;
 
 use App\Enums\ContentStatus;
 use App\Models\Concerns\HasTranslations;
-use App\Models\Concerns\Publishable;
 use App\Models\Concerns\RendersPublicOutput;
 use App\Models\Concerns\RendersWhenPublished;
+use App\Models\Concerns\Schedulable;
 use App\Models\Concerns\SyncsPublicRelations;
 use Database\Factories\PostFactory;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -17,7 +17,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 class Post extends Model implements RendersPublicOutput
 {
     /** @use HasFactory<PostFactory> */
-    use HasFactory, HasTranslations, Publishable, RendersWhenPublished, SyncsPublicRelations;
+    use HasFactory, HasTranslations, RendersWhenPublished, Schedulable, SyncsPublicRelations;
 
     /** @var list<string> */
     protected array $translatable = ['title', 'slug', 'excerpt', 'body', 'meta_title', 'meta_description'];

@@ -99,6 +99,51 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Locale Fallback Chains
+    |--------------------------------------------------------------------------
+    |
+    | Which locale a record borrows from when it has no translation of its own,
+    | in order, ending at the primary locale. This decides both the text a
+    | reader sees AND the slug the record answers to, so /zh/about-us is the
+    | Chinese address of a page that only exists in Vietnamese and English —
+    | the same slug as /en/about-us, differing only in the prefix.
+    |
+    | Chinese borrows from English before Vietnamese on purpose: a reader who
+    | asked for Chinese and cannot have it is better served by English, and an
+    | English slug next to English text beats an English slug over Vietnamese
+    | text. A locale missing from this list falls back to the primary one.
+    |
+    */
+
+    'locale_fallbacks' => [
+        'en' => ['vi'],
+        'zh' => ['en', 'vi'],
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Locales That Do Not Get Their Own Slug
+    |--------------------------------------------------------------------------
+    |
+    | These borrow the address of the first locale in their fallback chain that
+    | has one, and the editor is not offered a field to override it.
+    |
+    | Chinese is here because `Str::slug()` keeps ASCII and drops everything
+    | else, so a title written in Han characters reduces to an empty string —
+    | 质量保证 has no ASCII in it at all. What is left to build an address from
+    | is either a random string, unreadable and changing on every save, or the
+    | name the record already has in another language. Mirroring picks the
+    | second, and buys two more things: /zh/about-us is the same address whether
+    | or not the page has been translated yet, so translating one never moves
+    | it; and no two records can ever want the same /zh address, because the
+    | English slugs they mirror are already unique.
+    |
+    */
+
+    'mirrored_slug_locales' => ['zh'],
+
+    /*
+    |--------------------------------------------------------------------------
     | Encryption Key
     |--------------------------------------------------------------------------
     |

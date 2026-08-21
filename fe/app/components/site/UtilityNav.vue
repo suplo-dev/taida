@@ -64,7 +64,7 @@ watch(() => route.fullPath, () => (open.value = false))
         <NuxtLink
           v-for="link in chrome?.utility ?? []"
           :key="link.id"
-          :to="link.url ?? '/'"
+          :to="link.href"
           :target="link.opensInNewTab ? '_blank' : undefined"
           :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
           class="border-l border-primary-950/15 px-4 font-semibold transition hover:text-brand-600 first:border-l-0 lg:px-5"

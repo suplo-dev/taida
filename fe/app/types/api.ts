@@ -1,3 +1,14 @@
+import type { MenuTarget, SiteRoute } from '~~/shared/content-urls'
+
+/*
+ * Đích đến của menu được định nghĩa cùng chỗ với bản đồ đường dẫn, vì hai thứ
+ * đó phải khớp nhau; ở đây chỉ tái xuất để phần còn lại của app dùng một cửa.
+ */
+export type { MenuTarget, SiteRoute }
+
+/** Giá trị của cột `target_type`, khớp với enum `MenuTarget` bên API. */
+export type MenuTargetType = MenuTarget['type']
+
 export type Locale = 'vi' | 'en' | 'zh'
 
 export type ContentStatus = 'draft' | 'published'
@@ -22,6 +33,12 @@ export interface Media {
   alt: string | null
   width: number | null
   height: number | null
+}
+
+/** Mã QR liên hệ trong cấu hình site — nhiều mã, mỗi mã một nhãn. */
+export interface ContactQr {
+  label: string
+  media: Media
 }
 
 /** Envelope Laravel API Resources always respond with. */
@@ -129,9 +146,20 @@ export interface Page {
 export interface MenuItem {
   id: number
   label: string
-  url: string | null
+  /**
+   * Đích đến, không phải địa chỉ: API đặt tên nơi cần tới, `menuHref` dựng ra
+   * đường dẫn cho ngôn ngữ đang hiển thị. `null` là mục chưa chọn đích — API đã
+   * lọc chúng khỏi menu công khai, kiểu vẫn cho phép để bên nhận không quên.
+   */
+  target: MenuTarget | null
   opensInNewTab: boolean
   children: MenuItem[]
+}
+
+/** Mục menu đã có đường dẫn, do `useSiteData` dựng — xem `resolveLinks`. */
+export interface MenuLink extends Omit<MenuItem, 'children'> {
+  href: string
+  children: MenuLink[]
 }
 
 export interface SearchResults {
@@ -224,6 +252,19 @@ export interface AdminMenuItem {
   id: number
   sort_order: number
   opens_in_new_tab: boolean
+  target_type: MenuTargetType
+  target_route: SiteRoute | null
+  target_id: number | null
+  external_url: string | null
   children: AdminMenuItem[]
-  translations: Translations<{ label: string, url: string | null }>
+  translations: Translations<{ label: string }>
+}
+
+/** Một lựa chọn trong bộ chọn đích ở màn Menu — xem `/admin/menu-targets`. */
+export interface MenuTargetOption {
+  type: MenuTargetType
+  route: SiteRoute | null
+  id: number | null
+  label: string
+  published: boolean
 }

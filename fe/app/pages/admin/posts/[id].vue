@@ -100,13 +100,12 @@ function field(locale: Locale, name: string): string {
                 <UInput v-model="form.translations[locale].title" size="lg" class="w-full" />
               </AdminFormField>
 
-              <AdminFormField
-                label="Đường dẫn (slug)"
+              <AdminSlugField
+                v-model="form.translations[locale].slug"
+                :locale="locale"
+                :translations="form.translations"
                 :error="error(field(locale, 'slug'))"
-                hint="Để trống sẽ tự sinh từ tiêu đề."
-              >
-                <UInput v-model="form.translations[locale].slug" class="w-full" placeholder="tu-dong-sinh" />
-              </AdminFormField>
+              />
 
               <AdminFormField label="Tóm tắt" :error="error(field(locale, 'excerpt'))">
                 <UTextarea v-model="form.translations[locale].excerpt" :rows="3" class="w-full" />
