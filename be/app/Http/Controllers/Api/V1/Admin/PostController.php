@@ -47,7 +47,7 @@ class PostController extends Controller
             ]);
 
             $this->syncTranslations($post, $request->translations(), 'title');
-            $post->tags()->sync($request->input('tag_ids', []));
+            $post->syncPublicRelation('tags', $request->input('tag_ids', []));
 
             return $post;
         });
@@ -65,7 +65,7 @@ class PostController extends Controller
             $this->syncTranslations($post, $request->translations(), 'title');
 
             if ($request->has('tag_ids')) {
-                $post->tags()->sync($request->input('tag_ids', []));
+                $post->syncPublicRelation('tags', $request->input('tag_ids', []));
             }
         });
 

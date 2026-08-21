@@ -4,7 +4,7 @@ import type { AdminPage, ContentStatus, Locale } from '~/types/api'
 definePageMeta({ layout: 'admin', middleware: 'auth' })
 
 const route = useRoute()
-const { saving, error, find, save } = useAdminResource<AdminPage>('pages')
+const { saving, error, errors, find, save } = useAdminResource<AdminPage>('pages')
 
 const id = computed(() => (route.params.id === 'new' ? null : Number(route.params.id)))
 
@@ -63,7 +63,7 @@ function field(locale: Locale, name: string): string {
 
     <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div class="rounded-lg border border-neutral-200 bg-white p-6">
-        <AdminTranslationTabs :translations="form.translations" title-field="title">
+        <AdminTranslationTabs :translations="form.translations" :errors="errors" title-field="title">
           <template #default="{ locale }">
             <div class="space-y-4">
               <AdminFormField

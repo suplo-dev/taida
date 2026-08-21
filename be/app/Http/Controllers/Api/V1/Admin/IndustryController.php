@@ -44,7 +44,7 @@ class IndustryController extends Controller
             $industry = Industry::create($request->safe()->except(['translations', 'service_ids']));
 
             $this->syncTranslations($industry, $request->translations(), 'name');
-            $industry->services()->sync($request->input('service_ids', []));
+            $industry->syncPublicRelation('services', $request->input('service_ids', []));
 
             return $industry;
         });
@@ -62,7 +62,7 @@ class IndustryController extends Controller
             $this->syncTranslations($industry, $request->translations(), 'name');
 
             if ($request->has('service_ids')) {
-                $industry->services()->sync($request->input('service_ids', []));
+                $industry->syncPublicRelation('services', $request->input('service_ids', []));
             }
         });
 

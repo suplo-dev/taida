@@ -2,6 +2,10 @@
 
 namespace App\Support;
 
+use App\Models\Industry;
+use App\Models\Post;
+use App\Models\Service;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
@@ -25,6 +29,24 @@ class SitePublisher
     private const CHANGED_KEY = 'publish:last-change';
 
     private const PUBLISHED_KEY = 'publish:last-run';
+
+    private const SCHEDULE_CURSOR_KEY = 'publish:schedule-cursor';
+
+    /**
+     * Models that can be scheduled: published, but dated in the future.
+     *
+     * They need watching separately because the moment such a record goes live
+     * comes with no database write at all — there is no model event to hang on
+     * to. Page is absent on purpose: it publishes by status alone, with no date
+     * column to schedule with.
+     *
+     * @var list<class-string<Model>>
+     */
+    private const SCHEDULED_MODELS = [
+        Service::class,
+        Industry::class,
+        Post::class,
+    ];
 
     /**
      * Records that something the site renders has changed.
@@ -62,25 +84,103 @@ class SitePublisher
     /**
      * Whether a build should start right now.
      *
-     * Held back while edits are still arriving, and while a build started
-     * recently enough that it has probably not finished yet.
+     * Two independent reasons, either one enough:
+     *  - an editor changed something and has stopped typing for long enough;
+     *  - a scheduled record has just reached its publish time.
+     *
+     * The second does NOT wait out the quiet period: there is nobody mid-edit
+     * to wait for. Both still pass the cooldown, which guards GitHub's quota
+     * rather than the editor.
      */
     public static function isDue(): bool
     {
-        if (! config('publish.enabled') || ! self::isStale()) {
+        if (! config('publish.enabled')) {
+            return false;
+        }
+
+        if (! self::editsHaveSettled() && ! self::scheduledContentWentLive()) {
+            return false;
+        }
+
+        return self::cooldownElapsed();
+    }
+
+    /**
+     * Whether anything reached the site since the last build without a save.
+     *
+     * This is the hole model events cannot cover: schedule a post for 8am and
+     * at 8am no statement runs, no observer fires, and the post sits there
+     * until somebody happens to edit something else. So ask the database.
+     *
+     * Self-clearing: `trigger()` moves the cursor forward, so the next pass
+     * finds the record already behind it.
+     */
+    public static function scheduledContentWentLive(): bool
+    {
+        $since = self::scheduleCursor();
+
+        if ($since === null) {
+            return false;
+        }
+
+        foreach (self::SCHEDULED_MODELS as $model) {
+            $wentLive = $model::query()
+                ->published()
+                ->where('published_at', '>', $since)
+                ->exists();
+
+            if ($wentLive) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Something changed, and the editor has stopped typing for long enough.
+     */
+    private static function editsHaveSettled(): bool
+    {
+        if (! self::isStale()) {
             return false;
         }
 
         $lastChange = self::timestamp(self::CHANGED_KEY);
 
-        if ($lastChange !== null && $lastChange->diffInSeconds(Carbon::now()) < config('publish.quiet_period')) {
-            return false;
-        }
+        return $lastChange === null
+            || $lastChange->diffInSeconds(Carbon::now()) >= config('publish.quiet_period');
+    }
 
+    /**
+     * The previous build is far enough back to have probably finished.
+     */
+    private static function cooldownElapsed(): bool
+    {
         $lastRun = self::lastPublishedAt();
 
         return $lastRun === null
             || $lastRun->diffInSeconds(Carbon::now()) >= config('publish.cooldown');
+    }
+
+    /**
+     * The mark meaning "everything published before this is in the HTML that
+     * is currently being served".
+     *
+     * The very first run only SETS the mark and returns null: at that point
+     * there is no telling when the live HTML was generated, and guessing either
+     * misses records or rebuilds for the entire back catalogue. From then on
+     * the mark is simply the last build.
+     */
+    private static function scheduleCursor(): ?Carbon
+    {
+        $cursor = self::timestamp(self::SCHEDULE_CURSOR_KEY);
+
+        if ($cursor === null) {
+            Cache::forever(self::SCHEDULE_CURSOR_KEY, Carbon::now()->timestamp);
+        }
+
+        return $cursor;
     }
 
     /**
@@ -107,7 +207,11 @@ class SitePublisher
             ->timeout(15)
             ->post(
                 "https://api.github.com/repos/{$repository}/actions/workflows/{$workflow}/dispatches",
-                ['ref' => config('publish.github.ref')],
+                [
+                    'ref' => config('publish.github.ref'),
+                    // Content-only rebuild: see the note on `publish.github.inputs`.
+                    'inputs' => config('publish.github.inputs', []),
+                ],
             );
 
         if ($response->failed()) {
@@ -121,8 +225,15 @@ class SitePublisher
 
         // Cleared only once GitHub has accepted the request; a failed call
         // leaves the site marked stale so the next tick tries again.
+        $now = Carbon::now();
+
         Cache::forget(self::STALE_KEY);
-        Cache::forever(self::PUBLISHED_KEY, Carbon::now()->timestamp);
+        Cache::forever(self::PUBLISHED_KEY, $now->timestamp);
+
+        // Move the schedule mark along with it: the build about to run covers
+        // everything due as of now. Without this, `scheduledContentWentLive()`
+        // keeps answering true and queues another build every cooldown, forever.
+        Cache::forever(self::SCHEDULE_CURSOR_KEY, $now->timestamp);
 
         return true;
     }

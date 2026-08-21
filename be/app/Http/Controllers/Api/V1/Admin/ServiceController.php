@@ -44,7 +44,7 @@ class ServiceController extends Controller
             $service = Service::create($request->safe()->except(['translations', 'industry_ids']));
 
             $this->syncTranslations($service, $request->translations(), 'name');
-            $service->industries()->sync($request->input('industry_ids', []));
+            $service->syncPublicRelation('industries', $request->input('industry_ids', []));
 
             return $service;
         });
@@ -62,7 +62,7 @@ class ServiceController extends Controller
             $this->syncTranslations($service, $request->translations(), 'name');
 
             if ($request->has('industry_ids')) {
-                $service->industries()->sync($request->input('industry_ids', []));
+                $service->syncPublicRelation('industries', $request->input('industry_ids', []));
             }
         });
 

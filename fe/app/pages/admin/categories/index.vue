@@ -26,6 +26,7 @@ const form = reactive({
 })
 
 const resource = computed(() => (kind.value === 'categories' ? categories : tags))
+const errors = computed(() => resource.value.errors.value)
 
 function nameOf(item: AdminCategory | AdminTag): string {
   return item.translations?.vi?.name ?? item.translations?.en?.name ?? `#${item.id}`
@@ -125,7 +126,7 @@ function field(locale: Locale, name: string): string {
     <UModal v-model:open="open" :title="kind === 'categories' ? 'Danh mục' : 'Thẻ'">
       <template #body>
         <form class="space-y-4" @submit.prevent="submit">
-          <AdminTranslationTabs :translations="form.translations" title-field="name">
+          <AdminTranslationTabs :translations="form.translations" :errors="errors" title-field="name">
             <template #default="{ locale }">
               <div class="space-y-4">
                 <AdminFormField

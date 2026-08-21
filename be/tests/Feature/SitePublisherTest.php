@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Post;
 use App\Models\Service;
 use App\Support\SitePublisher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -29,6 +30,7 @@ class SitePublisherTest extends TestCase
             'publish.github.token' => 'test-token',
             'publish.github.workflow' => 'deploy.yml',
             'publish.github.ref' => 'main',
+            'publish.github.inputs' => ['api' => false],
             'publish.quiet_period' => 90,
             'publish.cooldown' => 300,
         ]);
@@ -68,6 +70,101 @@ class SitePublisherTest extends TestCase
         Http::assertSent(fn ($request) => $request->url() === 'https://api.github.com/repos/taida/taida/actions/workflows/deploy.yml/dispatches'
             && $request->method() === 'POST'
             && $request['ref'] === 'main');
+    }
+
+    public function test_it_asks_for_a_content_only_build(): void
+    {
+        Http::fake(['api.github.com/*' => Http::response(status: 204)]);
+
+        Service::factory()->create();
+
+        $this->artisan('site:publish', ['--force' => true])->assertSuccessful();
+
+        // An edit changes rows, not code. Leaving the input out would let the
+        // workflow fall back to its own default (`api: true`) and redeploy the
+        // whole backend — vendor/, FTP upload, migrations — for a typo fix.
+        Http::assertSent(fn ($request) => $request['inputs'] === ['api' => false]);
+    }
+
+    // ── Scheduled records ────────────────────────────────────────────────────
+    //
+    // The moment a scheduled record goes live comes with no database write, so
+    // there is no model event to hang on to. `site:publish` has to ask.
+
+    public function test_a_post_that_reaches_its_publish_time_triggers_a_build(): void
+    {
+        Http::fake(['api.github.com/*' => Http::response(status: 204)]);
+
+        // A priming build, so there is a mark to compare against — as on the
+        // real host.
+        Service::factory()->create();
+        $this->travel(91)->seconds();
+        $this->artisan('site:publish')->assertSuccessful();
+        Http::assertSentCount(1);
+
+        // Dated two hours out. Saving it queues nothing: it is not on the site.
+        Post::factory()->scheduled()->create(['published_at' => now()->addHours(2)]);
+        $this->assertFalse(SitePublisher::isStale());
+
+        // Its time arrives. Nobody saved anything, yet the site is now missing
+        // a post.
+        $this->travel(2)->hours();
+
+        $this->artisan('site:publish')->assertSuccessful();
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_a_scheduled_post_does_not_trigger_a_build_before_its_time(): void
+    {
+        Http::fake(['api.github.com/*' => Http::response(status: 204)]);
+
+        Service::factory()->create();
+        $this->travel(91)->seconds();
+        $this->artisan('site:publish');
+
+        Post::factory()->scheduled()->create(['published_at' => now()->addHours(2)]);
+
+        $this->travel(1)->hour();
+        $this->artisan('site:publish')->assertSuccessful();
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_a_post_that_went_live_is_built_exactly_once(): void
+    {
+        Http::fake(['api.github.com/*' => Http::response(status: 204)]);
+
+        Service::factory()->create();
+        $this->travel(91)->seconds();
+        $this->artisan('site:publish');
+
+        Post::factory()->scheduled()->create(['published_at' => now()->addHours(2)]);
+        $this->travel(2)->hours();
+        $this->artisan('site:publish');
+
+        // The schedule mark has to move with that build. If it does not, the
+        // same post queues another one every cooldown, forever.
+        $this->travel(1)->hour();
+        $this->artisan('site:publish')->assertSuccessful();
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_the_first_ever_run_only_sets_the_baseline(): void
+    {
+        Http::fake(['api.github.com/*' => Http::response(status: 204)]);
+
+        // A back catalogue exists and `site:publish` has never run. There is no
+        // telling when the live HTML was built, so none of it counts as having
+        // just gone live.
+        Service::factory()->create(['published_at' => now()->subMonth()]);
+        cache()->forget('publish:stale-since');
+        cache()->forget('publish:last-change');
+
+        $this->artisan('site:publish')->assertSuccessful();
+
+        Http::assertNothingSent();
     }
 
     public function test_a_burst_of_edits_produces_a_single_build(): void

@@ -2,9 +2,10 @@
 
 namespace App\Models;
 
+use App\Models\Concerns\RendersPublicOutput;
 use Illuminate\Database\Eloquent\Model;
 
-class Setting extends Model
+class Setting extends Model implements RendersPublicOutput
 {
     /**
      * Settings whose value is a media id rather than a literal. The id is
@@ -33,6 +34,22 @@ class Setting extends Model
     public $incrementing = false;
 
     protected $fillable = ['key', 'value'];
+
+    /**
+     * Settings feed the header, footer and SEO defaults of every page.
+     */
+    public function isPubliclyVisible(): bool
+    {
+        return true;
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function publiclyRenderedAttributes(): array
+    {
+        return ['key', 'value'];
+    }
 
     protected function casts(): array
     {

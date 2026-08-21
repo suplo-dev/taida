@@ -30,6 +30,20 @@ return [
         'workflow' => env('PUBLISH_GITHUB_WORKFLOW', 'deploy.yml'),
 
         'ref' => env('PUBLISH_GITHUB_REF', 'main'),
+
+        /*
+        | Input truyền cho workflow. `api => false` là điểm mấu chốt: lần build
+        | này sinh ra từ một thao tác BIÊN TẬP, mã nguồn không đổi một byte —
+        | không có lý do gì cài lại `vendor/`, đẩy 28MB qua FTP rồi chạy
+        | migrate. Bỏ trống input thì GitHub áp mặc định của workflow (`true`)
+        | và mỗi lần sửa một dòng chữ lại kéo theo một lượt deploy backend đầy
+        | đủ. Job `Backend` bị skip, và điều kiện của job `Build` đã lường sẵn
+        | ca đó (`needs.api.result != 'failure'`).
+        |
+        | Đổi PUBLISH_GITHUB_WORKFLOW sang workflow khác thì phải sửa cả đây:
+        | GitHub trả 422 nếu input không có trong workflow được gọi.
+        */
+        'inputs' => ['api' => false],
     ],
 
     /*

@@ -5,6 +5,9 @@ namespace App\Models;
 use App\Enums\ContentStatus;
 use App\Models\Concerns\HasTranslations;
 use App\Models\Concerns\Publishable;
+use App\Models\Concerns\RendersPublicOutput;
+use App\Models\Concerns\RendersWhenPublished;
+use App\Models\Concerns\SyncsPublicRelations;
 use Database\Factories\IndustryFactory;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -13,10 +16,10 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class Industry extends Model
+class Industry extends Model implements RendersPublicOutput
 {
     /** @use HasFactory<IndustryFactory> */
-    use HasFactory, HasTranslations, Publishable;
+    use HasFactory, HasTranslations, Publishable, RendersWhenPublished, SyncsPublicRelations;
 
     /** @var list<string> */
     protected array $translatable = ['name', 'slug', 'excerpt', 'body', 'meta_title', 'meta_description'];

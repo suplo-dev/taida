@@ -347,6 +347,47 @@ build trước và cái chạy sau chưa chắc là cái mới nhất.
 Gọi GitHub thất bại thì site **vẫn được đánh dấu là cũ**, lần chạy sau thử lại —
 thay đổi không bị bỏ quên. Lỗi ghi vào `storage/logs/laravel.log`.
 
+**Không phải cú bấm Lưu nào cũng thành một lần build.** Backend chỉ đánh dấu
+site đã cũ khi thao tác đó làm bản HTML tĩnh khác đi, và nó kiểm hai điều: bản
+ghi **có đang hiện trên trang không**, và cột vừa đổi **có đi ra HTML không**.
+
+| Thao tác | Có build? |
+|---|---|
+| Tạo/sửa/xoá một **bản nháp** (kể cả sửa phần dịch của nó) | không — chưa ai ngoài kia nhìn thấy |
+| Sửa bản ghi **hẹn giờ** chưa tới lượt đăng | không — cùng lý do |
+| Bấm Lưu mà không sửa gì | không — Eloquent không ghi gì xuống database |
+| Tải ảnh lên nhưng chưa gắn vào đâu | không — build thuộc về lúc gắn ảnh, không phải lúc tải lên |
+| Đổi mật khẩu, email, vai trò | không — không thứ nào ra trang công khai |
+| **Đăng** một bản nháp, hoặc **gỡ** một mục đang đăng | có |
+| Sửa nội dung/phần dịch của mục **đang đăng** | có |
+| Sửa menu, chuyên mục, thẻ, cài đặt | có — chúng có mặt trên mọi trang |
+| Gắn/bỏ thẻ cho bài, nối dịch vụ với lĩnh vực | có |
+| Lưu lại đúng bộ thẻ cũ | không — không gắn thêm cũng không gỡ đi cái nào |
+| Đổi **tên** người đã ký tên một bài đang đăng | có |
+| Đổi alt/đường dẫn của ảnh đang là bìa một mục đang đăng | có |
+| Bản ghi hẹn giờ **tới lượt đăng** | có — xem bên dưới |
+
+Cache đọc thì **luôn** bị xoá ở mọi lần ghi, không kèm điều kiện: chính CMS cũng
+đọc qua cache đó nên biên tập viên phải thấy ngay bản nháp của mình.
+
+Bảng nối (thẻ của bài, lĩnh vực của dịch vụ) **không phát sự kiện model nào** —
+ghi một dòng pivot thì cả hai đầu đều im lặng. Nên các chỗ đó không gọi `sync()`
+thẳng mà đi qua `syncPublicRelation()`, để việc báo tin dính liền với thao tác
+ghi và một chỗ gọi thêm sau này không thể quên.
+
+**Bản ghi hẹn giờ.** Đặt bài đăng lúc 8h sáng mai thì đúng 8h sáng mai *không có
+câu lệnh ghi database nào chạy* — không sự kiện model nào nổ. `site:publish` vì
+vậy còn hỏi thẳng database mỗi phút: "có mục nào tới lượt đăng kể từ lần dựng
+gần nhất không?". Vế này **không** phải chờ hết `PUBLISH_QUIET_PERIOD` — không có
+ai đang gõ phím để mà chờ — nhưng vẫn qua `PUBLISH_COOLDOWN`. Lần chạy đầu tiên
+chỉ *đặt mốc* rồi thôi: lúc đó chưa biết bản HTML đang chạy được dựng khi nào.
+
+**Build sinh ra từ đây chỉ dựng lại frontend.** Lệnh gọi workflow kèm
+`inputs: {api: false}`, đúng cái ô "Đẩy cả backend" bỏ tick khi chạy tay — nên
+job **Backend** bị skip. Sửa nội dung là đổi dữ liệu, không đổi mã nguồn: không
+có gì để cài lại `vendor/`, đẩy 28MB qua FTP rồi chạy migrate. Mã nguồn lên
+hosting theo `push` vào `main` như thường lệ.
+
 ## Những chỗ hay hỏng
 
 | Triệu chứng | Nguyên nhân |

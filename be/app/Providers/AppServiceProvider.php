@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\Category;
 use App\Models\CategoryTranslation;
+use App\Models\Concerns\RendersPublicOutput;
 use App\Models\Industry;
 use App\Models\IndustryTranslation;
 use App\Models\Media;
@@ -32,9 +33,13 @@ class AppServiceProvider extends ServiceProvider
      * listed too — editing only the text still changes what the site renders.
      * So is Media: cached responses embed image URLs and alt text, so deleting
      * a picture would otherwise leave a broken image up for the rest of the
-     * TTL.
+     * TTL. User is here for the byline printed on a post.
      *
-     * @var list<class-string<Model>>
+     * Being listed does not mean every save rebuilds the site — each of these
+     * implements RendersPublicOutput, and ContentObserver uses it to tell an
+     * edit that moves the page from one that does not.
+     *
+     * @var list<class-string<Model&RendersPublicOutput>>
      */
     private const CACHED_CONTENT_MODELS = [
         Service::class, ServiceTranslation::class,
@@ -44,7 +49,7 @@ class AppServiceProvider extends ServiceProvider
         Tag::class, TagTranslation::class,
         Page::class, PageTranslation::class,
         MenuItem::class, MenuItemTranslation::class,
-        Setting::class, Media::class,
+        Setting::class, Media::class, User::class,
     ];
 
     /**

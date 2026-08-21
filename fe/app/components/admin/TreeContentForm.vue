@@ -23,7 +23,7 @@ type TreeRecord = AdminService & AdminIndustry
 
 const route = useRoute()
 const api = useApi()
-const { saving, error, find, save } = useAdminResource<TreeRecord>(props.endpoint)
+const { saving, error, errors, find, save } = useAdminResource<TreeRecord>(props.endpoint)
 
 const id = computed(() => (route.params.id === 'new' ? null : Number(route.params.id)))
 
@@ -119,7 +119,7 @@ function field(locale: Locale, name: string): string {
 
     <div class="grid gap-6 lg:grid-cols-[1fr_320px]">
       <div class="rounded-lg border border-neutral-200 bg-white p-6">
-        <AdminTranslationTabs :translations="form.translations" title-field="name">
+        <AdminTranslationTabs :translations="form.translations" :errors="errors" title-field="name">
           <template #default="{ locale }">
             <div class="space-y-4">
               <AdminFormField

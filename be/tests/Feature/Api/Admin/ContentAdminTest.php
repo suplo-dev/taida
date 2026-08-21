@@ -10,6 +10,7 @@ use App\Models\Post;
 use App\Models\Setting;
 use App\Models\Tag;
 use App\Models\User;
+use App\Support\SitePublisher;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -55,6 +56,32 @@ class ContentAdminTest extends TestCase
         $this->assertSame($this->editor->id, $post->author_id);
         $this->assertSame(2, $post->tags()->count());
         $this->assertSame('cap-nhat-quy-dinh-moi', $post->translations()->where('locale', 'vi')->sole()->slug);
+    }
+
+    public function test_changing_only_the_tags_of_a_live_post_queues_a_build(): void
+    {
+        $post = Post::factory()->create();
+        $tag = Tag::factory()->create();
+
+        cache()->forget('publish:stale-since');
+        cache()->forget('publish:last-change');
+        $this->assertFalse(SitePublisher::isStale());
+
+        // Pivot rows fire no model event, so nothing about this request would
+        // reach ContentObserver on its own — and the payload deliberately keeps
+        // every column of the post itself unchanged.
+        $this->actingAs($this->editor)
+            ->putJson("/api/v1/admin/posts/{$post->id}", [
+                'status' => $post->status->value,
+                'published_at' => $post->published_at->toIso8601String(),
+                'category_id' => $post->category_id,
+                'tag_ids' => [$tag->id],
+                'translations' => ['vi' => ['title' => $post->translate('vi')->title]],
+            ])
+            ->assertOk();
+
+        $this->assertSame(1, $post->tags()->count());
+        $this->assertTrue(SitePublisher::isStale());
     }
 
     public function test_the_admin_post_list_can_be_filtered_by_status(): void

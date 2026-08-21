@@ -49,7 +49,7 @@ class PublishSite extends Command
             return 'Tự xuất bản đang tắt (PUBLISH_ENABLED=false).';
         }
 
-        if (! SitePublisher::isStale()) {
+        if (! SitePublisher::isStale() && ! SitePublisher::scheduledContentWentLive()) {
             return 'Không có thay đổi nào kể từ lần xuất bản trước.';
         }
 
