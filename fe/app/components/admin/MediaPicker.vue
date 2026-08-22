@@ -8,22 +8,51 @@ const props = defineProps<{ preview?: Media | null }>()
 const api = useApi()
 const toast = useToast()
 
+/**
+ * Một trang vừa đủ sáu hàng của lưới bốn cột, nên trang nào cũng đầy — trước
+ * đây picker xin 40 ảnh rồi thôi, thư viện quá 40 tấm thì những tấm cũ hơn
+ * không có đường nào chạm tới.
+ */
+const PER_PAGE = 24
+
 const open = ref(false)
 const uploading = ref(false)
+const loading = ref(false)
 const items = ref<Media[]>([])
+const page = ref(1)
+const total = ref(0)
+/**
+ * Tách khỏi `items.length`: thư viện rỗng cũng là kết quả hợp lệ, lấy số ảnh
+ * làm dấu "đã nạp chưa" thì mỗi lần mở lại gọi API thêm một lần nữa.
+ */
+const loaded = ref(false)
 const selected = ref<Media | null>(props.preview ?? null)
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 
 watch(() => props.preview, value => (selected.value = value ?? null))
 
 async function load() {
-  const response = await api<Paginated<Media>>('/admin/media', { query: { per_page: 40 } })
-  items.value = response.data
+  loading.value = true
+
+  try {
+    const response = await api<Paginated<Media>>('/admin/media', {
+      query: { page: page.value, per_page: PER_PAGE },
+    })
+
+    items.value = response.data
+    total.value = response.meta.total
+    loaded.value = true
+  }
+  finally {
+    loading.value = false
+  }
 }
+
+watch(page, () => load())
 
 async function openPicker() {
   open.value = true
-  if (items.value.length === 0) {
+  if (!loaded.value) {
     await load()
   }
 }
@@ -47,7 +76,14 @@ async function upload(event: Event) {
 
   try {
     const { data } = await api<Envelope<Media>>('/admin/media', { method: 'POST', body: form })
-    items.value = [data, ...items.value]
+
+    if (page.value === 1) {
+      await load()
+    }
+    else {
+      page.value = 1 // watcher nạp lại
+    }
+
     choose(data)
   }
   catch (error) {
@@ -96,10 +132,10 @@ async function upload(event: Event) {
         </div>
 
         <p v-if="items.length === 0" class="py-8 text-center text-sm text-neutral-500">
-          Thư viện chưa có ảnh nào.
+          {{ loading ? 'Đang tải…' : 'Thư viện chưa có ảnh nào.' }}
         </p>
 
-        <div v-else class="grid max-h-96 grid-cols-4 gap-2 overflow-y-auto">
+        <div v-else class="grid max-h-96 grid-cols-4 gap-2 overflow-y-auto transition-opacity" :class="loading ? 'opacity-50' : ''">
           <button
             v-for="item in items"
             :key="item.id"
@@ -110,6 +146,10 @@ async function upload(event: Event) {
           >
             <img :src="item.thumbUrl ?? item.url" :alt="item.alt ?? ''" class="size-full object-cover">
           </button>
+        </div>
+
+        <div v-if="total > PER_PAGE" class="mt-4 flex justify-center">
+          <UPagination v-model:page="page" :total="total" :items-per-page="PER_PAGE" size="sm" />
         </div>
       </template>
     </UModal>

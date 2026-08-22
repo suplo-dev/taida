@@ -302,8 +302,9 @@ v-for="group in ([
           >
             <!-- One box for every mark, so the labels line up; see the utility bar's own note. -->
             <span class="flex h-6 w-[1.875rem] shrink-0 items-center justify-center">
-              <SiteFlagVn v-if="edition.locale === 'vi'" :title="t('utility.vietnam')" />
-              <SiteFlagCn v-else-if="edition.locale === 'zh'" :title="t('utility.china')" />
+              <!-- Không đặt tên cho cờ: `edition.lang` ngay bên cạnh đã là tên đó rồi. -->
+              <SiteFlagVn v-if="edition.locale === 'vi'" />
+              <SiteFlagCn v-else-if="edition.locale === 'zh'" />
               <!-- The English edition is the global one, so it keeps the globe rather than a country's flag. -->
               <UIcon v-else name="i-lucide-globe" class="size-6 text-brand-200" />
             </span>

@@ -6,9 +6,12 @@ import type { Media } from '~/types/api'
  *
  * Cả ba trạng thái đều là trạng thái hợp lệ, không phải "đang thiếu":
  *
- *   không có gì  → nền kem + vệt sáng như bản đầu tiên của site
- *   có ảnh       → ảnh phủ kín, phủ thêm một lớp kem chuyển dần sang trong suốt
+ *   không có gì  → nền trắng + vệt sáng như bản đầu tiên của site, chữ mực đậm
+ *   có ảnh       → ảnh phủ kín, phủ thêm một lớp navy chuyển dần sang trong suốt
  *   có video     → video tự chạy, ảnh làm poster lúc chưa tải xong
+ *
+ * Khi có media thì hero lật sang "chữ sáng trên nền tối": lớp phủ kem trước đây
+ * làm ảnh bạc trắng đi mới đủ đỡ chữ mực, còn navy thì càng đậm ảnh càng nổi.
  *
  * Chọn ảnh/video ở CMS → Cấu hình. Không có bước deploy nào ở giữa; site tĩnh
  * nên nó lên sau lần build kế tiếp (tự động, xem deploy/shared-hosting/README).
@@ -26,7 +29,10 @@ const hasMedia = computed(() => Boolean(props.image || props.video))
 </script>
 
 <template>
-  <section class="relative isolate overflow-hidden bg-cream-300">
+  <section
+    class="relative isolate overflow-hidden"
+    :class="hasMedia ? 'bg-primary-950' : 'border-b border-primary-100 bg-white'"
+  >
     <!--
       Lớp media. `aria-hidden` vì nó là nền trang trí: tiêu đề ngay bên cạnh đã
       nói đủ nội dung, còn trình đọc màn hình đọc thêm mô tả ảnh chỉ tạo nhiễu.
@@ -67,13 +73,17 @@ const hasMedia = computed(() => Boolean(props.image || props.video))
       />
 
       <!--
-        Chữ ở đây là màu mực trên nền sáng, nên nó cần nền sáng để đọc được —
-        ảnh của khách có thể tối, sáng, hay lổn nhổn cả hai. Lớp phủ kem đặc ở
-        mép trái (nơi có chữ) và loãng dần sang phải (nơi chỉ có ảnh) giữ được
-        cả độ tương phản lẫn phần ảnh đáng nhìn.
+        Chữ trên media là chữ trắng, nên nó cần nền tối để đọc được — ảnh của
+        khách có thể tối, sáng, hay lổn nhổn cả hai. Lớp phủ navy đặc ở mép
+        trái (nơi có chữ) và loãng dần sang phải (nơi chỉ có ảnh) giữ được cả
+        độ tương phản lẫn phần ảnh đáng nhìn.
+
+        Navy thay cho lớp kem cũ: kem là màu sáng nên muốn đỡ được chữ mực nó
+        phải đục tới mức làm ảnh bạc hẳn đi. Tối dần thì ngược lại — ảnh càng
+        rõ khi lớp phủ càng đậm, nên chỗ chữ vừa dễ đọc vừa không phí ảnh.
       -->
-      <div class="absolute inset-0 bg-gradient-to-r from-cream-300 via-cream-300/85 to-cream-300/30" />
-      <div class="absolute inset-0 bg-gradient-to-t from-cream-300/60 to-transparent lg:hidden" />
+      <div class="absolute inset-0 bg-gradient-to-r from-primary-950 via-primary-950/75 to-primary-950/25" />
+      <div class="absolute inset-0 bg-gradient-to-t from-primary-950/75 to-transparent lg:hidden" />
     </div>
 
     <!-- Không có media: giữ nguyên vệt sáng của bản gốc. -->
@@ -82,10 +92,17 @@ const hasMedia = computed(() => Boolean(props.image || props.video))
     </div>
 
     <div class="relative mx-auto max-w-8xl px-4 py-24 sm:px-6 lg:px-8 lg:py-32 xl:px-12">
-      <h1 class="max-w-3xl text-4xl font-bold leading-tight tracking-tight text-primary-900 sm:text-5xl lg:text-6xl">
+      <h1
+        class="max-w-3xl text-4xl font-bold leading-tight tracking-tight sm:text-5xl lg:text-6xl"
+        :class="hasMedia ? 'text-white' : 'text-primary-900'"
+      >
         {{ title }}
       </h1>
-      <p v-if="subtitle" class="mt-6 max-w-2xl text-lg leading-relaxed text-primary-500">
+      <p
+        v-if="subtitle"
+        class="mt-6 max-w-2xl text-lg leading-relaxed"
+        :class="hasMedia ? 'text-primary-100' : 'text-primary-500'"
+      >
         {{ subtitle }}
       </p>
 

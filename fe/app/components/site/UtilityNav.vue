@@ -41,7 +41,7 @@ watch(() => route.fullPath, () => (open.value = false))
     over the header — was drawn underneath it. The bar has to outrank the
     header for its own dropdown to be visible.
   -->
-  <div class="relative z-60 hidden bg-cream-300 text-primary-700 md:block">
+  <div class="relative z-60 hidden bg-white text-primary-700 md:block">
     <!--
       Set in the body size rather than the usual 12 px — these are the links
       customers actually ask for, and as fine print they get skipped over. At
@@ -117,8 +117,9 @@ watch(() => route.fullPath, () => (open.value = false))
                 rectangles beside it.
               -->
               <span class="flex h-6 w-[1.875rem] shrink-0 items-center justify-center">
-                <SiteFlagVn v-if="row.locale === 'vi'" :title="t('utility.vietnam')" />
-                <SiteFlagCn v-else-if="row.locale === 'zh'" :title="t('utility.china')" />
+                <!-- Không đặt tên cho cờ: `t(row.region)` ngay dưới đã là tên đó rồi. -->
+                <SiteFlagVn v-if="row.locale === 'vi'" />
+                <SiteFlagCn v-else-if="row.locale === 'zh'" />
                 <!-- The English edition is the global one, so it keeps the globe rather than a country's flag. -->
                 <UIcon v-else name="i-lucide-globe" class="size-6 text-brand-200" />
               </span>

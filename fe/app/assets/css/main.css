@@ -10,12 +10,18 @@
  * under the 4.5:1 the nav needs, and one step deeper is still unmistakably
  * the same colour at 4.8:1.
  *
- * `primary` is a navy ramp used two ways: 600–950 are dark surfaces (footer,
- * CTA band) and heading/body ink on the light ones, while 100–400 are the
- * tints that sit legibly on top of the dark ones. `cream` is the utility bar
- * and the hero. `accent` is antique brass, kept for fine detail — the active
- * nav underline, the footer's contact icons, section rules — rather than for
- * fills, where it would compete with the blue.
+ * `primary` is a navy ramp used three ways: 600–950 are dark surfaces (footer,
+ * CTA band, the hero's overlay) and heading/body ink on the light ones, 100–400
+ * are the tints that sit legibly on top of the dark ones, and 100 doubles as
+ * the hairline that separates one white band from the next. `accent` is antique
+ * brass, kept for fine detail — the active nav underline, the footer's contact
+ * icons, section rules — rather than for fills, where it would compete with the
+ * blue.
+ *
+ * Every light surface is plain white. There was a `cream` ramp here holding the
+ * utility bar, the heroes and the alternating home sections; it was dropped
+ * because the hero's overlay had to be a cream thick enough to carry ink, and
+ * that thickness washed the background video out to nothing.
  */
 @theme static {
   --color-primary-50: #f3f6fa;
@@ -53,13 +59,6 @@
   --color-accent-800: #6b4c1c;
   --color-accent-900: #5a401b;
   --color-accent-950: #34230b;
-
-  --color-cream-50: #fdfbf7;
-  --color-cream-100: #faf7f0;
-  --color-cream-200: #f7f3ea;
-  --color-cream-300: #efe8da;
-  --color-cream-400: #e2d7c1;
-  --color-cream-500: #cfc0a2;
 
   /*
    * One step past Tailwind's 7xl (80rem). The page furniture is laid out

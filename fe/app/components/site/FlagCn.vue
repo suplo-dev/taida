@@ -3,8 +3,14 @@
  * The Chinese flag, drawn inline for the same reason as [SiteFlagVn]: the only
  * icon set bundled here is Lucide, which has no flags, and a raster asset for a
  * 20 px mark would cost a request and blur on retina.
+ *
+ * Decorative unless given a `title` — see [SiteFlagVn] for why that is the
+ * default.
  */
-withDefaults(defineProps<{ title?: string }>(), { title: '中国' })
+defineProps<{
+  /** Accessible name, for a flag with no visible label beside it. */
+  title?: string
+}>()
 </script>
 
 <template>
@@ -12,8 +18,17 @@ withDefaults(defineProps<{ title?: string }>(), { title: '中国' })
     Same 30×20 box as the Vietnamese flag beside it in the switcher — 3:2, both
     flags' own proportion — so the two rows line up on the same mark width.
   -->
-  <svg viewBox="0 0 30 20" class="h-5 w-[1.875rem] shrink-0 rounded-[1px]" role="img">
-    <title>{{ title }}</title>
+  <!--
+    `aria-label` rather than a `<title>` child: same accessible name, but it
+    leaves the markup with one `<title>` in it, which is the document's.
+  -->
+  <svg
+    viewBox="0 0 30 20"
+    class="h-5 w-[1.875rem] shrink-0 rounded-[1px]"
+    :role="title ? 'img' : undefined"
+    :aria-label="title"
+    :aria-hidden="title ? undefined : 'true'"
+  >
     <rect width="30" height="20" fill="#de2910" />
     <!--
       The canton is a fixed construction, not an eyeballed arrangement: on a

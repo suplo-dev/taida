@@ -5,7 +5,7 @@ defineProps<{ title: string, subtitle?: string | null, cover?: Media | null }>()
 </script>
 
 <template>
-  <section class="relative isolate overflow-hidden bg-cream-300">
+  <section class="relative isolate overflow-hidden border-b border-primary-100 bg-white">
     <!--
       `sizes` phải có tiền tố breakpoint. Viết trơ trọi là `sizes="100vw"` thì
       @nuxt/image v2 không hiểu là "rộng bằng khung nhìn" mà sinh ra srcset

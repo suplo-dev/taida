@@ -58,7 +58,7 @@ useSeo(() => ({
         <a
           v-if="chrome?.settings.hotline"
           :href="`tel:${chrome.settings.hotline.replace(/\s/g, '')}`"
-          class="inline-flex items-center gap-2 rounded border border-primary-300 bg-cream-300/80 px-6 py-3 font-medium text-primary-800 backdrop-blur-sm transition hover:border-primary-600 hover:bg-primary-600 hover:text-white"
+          class="inline-flex items-center gap-2 rounded border border-primary-300 bg-white/85 px-6 py-3 font-medium text-primary-800 backdrop-blur-sm transition hover:border-primary-600 hover:bg-primary-600 hover:text-white"
         >
           <UIcon name="i-lucide-phone" class="size-5" />
           {{ chrome.settings.hotline }}
@@ -87,7 +87,7 @@ useSeo(() => ({
     </section>
 
     <!-- 3. Industries -->
-    <section class="bg-cream-50 py-16">
+    <section class="border-y border-primary-100 bg-white py-16">
       <div class="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <SiteSectionHeading
           :title="t('home.industriesTitle')"
@@ -130,7 +130,7 @@ useSeo(() => ({
     </section>
 
     <!-- 5. News -->
-    <section v-if="home?.posts.length" class="bg-cream-50 py-16">
+    <section v-if="home?.posts.length" class="border-y border-primary-100 bg-white py-16">
       <div class="mx-auto max-w-8xl px-4 sm:px-6 lg:px-8 xl:px-12">
         <SiteSectionHeading :title="t('home.newsTitle')" :to="localePath('tin-tuc')" />
 
