@@ -128,6 +128,12 @@ jobs:
           # nhận nó đều tự xoá mình ngay sau khi chạy xong.
           token="$(openssl rand -hex 32)"
           echo "::add-mask::$token"
+          # Bước migrate là một step riêng (để nó có tên riêng trong log), nên token
+          # phải qua được ranh giới step. Qua file trên đĩa runner chứ không qua
+          # $GITHUB_OUTPUT: output của step nằm lại trong metadata của run, file thì
+          # biến mất cùng runner. `umask 077` trước khi ghi, không chmod sau — chmod
+          # sau để lại một khoảnh khắc file đọc được bởi mọi process.
+          (umask 077 && printf '%s' "$token" > "$RUNNER_TEMP/deploy-token")
           sed -e "s/__DEPLOY_TOKEN__/$token/" \
               -e "s|__DEPLOY_ROOT__|..|" \
               -e "s/__DEPLOY_PRUNE__/0/" \
@@ -151,6 +157,7 @@ jobs:
           #
           # `mkdir -pf` cho lần deploy đầu, khi $DEST/public chưa tồn tại. Cờ `-f` là
           # bắt buộc: `cmd:fail-exit true` sẽ cho cả job chết vì mkdir trên thư mục đã có.
+          echo "::group::Thăm dò FTP ↔ HTTP"
           nonce="$(openssl rand -hex 8)"
           echo "$nonce" > "$RUNNER_TEMP/_deploy-probe.txt"
 
@@ -173,6 +180,7 @@ jobs:
 
           got="$(curl -sS --max-time 30 "$API/_deploy-probe.txt" 2>/dev/null | tr -d '[:space:]' || true)"
           if [ "$got" != "$nonce" ]; then
+            echo "::endgroup::"
             echo "::error::Ghi được file qua FTP nhưng không đọc lại được qua HTTP."
             echo "Đã ghi vào (đường dẫn FTP): $DEST/public/_deploy-probe.txt"
             echo "Đã thử đọc ở:               $API/_deploy-probe.txt"
@@ -200,8 +208,10 @@ jobs:
             exit 1
           fi
           echo "✓ $DEST/public/ phục vụ tại $API/ — đường dẫn khớp."
+          echo "::endgroup::"
 
           # ── Bản build thật ────────────────────────────────────────────────────────
+          echo "::group::Đẩy zip + script deploy qua FTP"
           lftp <<LFTP
           set ftp:ssl-force true
           set ftp:ssl-protect-data true
@@ -218,6 +228,7 @@ jobs:
           cls -l "$DEST/public/_deploy-unpack.php" "$DEST/public/_deploy-artisan.php" "$DEST/public/.deploy-payload.zip"
           bye
           LFTP
+          echo "::endgroup::"
 
           # Hai lượt gọi HTTP tách rời, không gộp: lượt đầu ghi đè cả vendor/, bootstrap
           # Laravel ngay trong cùng request đó là nạp autoloader mới đè lên file cũ còn
@@ -249,16 +260,60 @@ jobs:
               ;;
           esac
 
-          echo "── migrate + hâm cache"
-          out="$(curl -sS --max-time 600 -X POST -d "token=$token" "$API/_deploy-artisan.php")"
+      # ── Step RIÊNG, không gộp vào "Upload" ──────────────────────────────────────
+      # Đây là chỗ `php artisan migrate` thực sự chạy, và nó là thứ người deploy muốn
+      # xem nhất khi có gì đó sai. Gộp chung vào step "Upload" thì output của nó nằm
+      # lẫn giữa vài trăm dòng cài lftp, thăm dò FTP và liệt kê thư mục — đúng nghĩa
+      # là có chạy nhưng không ai tìm thấy. Một step có TÊN thì nó là một dòng riêng
+      # trong danh sách bước ở Actions, bấm phát ra ngay.
+      - name: migrate + hâm cache
+        timeout-minutes: 15
+        env:
+          API: ${{ vars.NUXT_PUBLIC_API_BASE }}
+        run: |
+          set -euo pipefail
+
+          token="$(cat "$RUNNER_TEMP/deploy-token")"
+          echo "::add-mask::$token"
+
+          # Lấy cả mã HTTP như bước giải nén: không có nó thì curl chết vì timeout hay
+          # 500 đều chỉ ra một biến rỗng, và thông báo lỗi duy nhất là "migrate thất
+          # bại" — không nói được vì sao.
+          code="$(curl -sS --max-time 600 -o "$RUNNER_TEMP/artisan.out" -w '%{http_code}' \
+            -X POST -d "token=$token" "$API/_deploy-artisan.php" || echo 000)"
+          out="$(cat "$RUNNER_TEMP/artisan.out")"
+
           echo "$out"
+
           # Chỉ nhìn DÒNG CUỐI: script in output của từng lệnh artisan trước khi kết
           # luận, nên tìm "OK" ở bất cứ đâu trong đó là có ngày một dòng output vô
           # tình chứa hai chữ cái ấy và một lần deploy hỏng được báo là xong.
-          case "$(printf '%s' "$out" | tail -1)" in
-            OK) ;;
-            *) echo "::error::migrate/cache thất bại"; exit 1 ;;
-          esac
+          ok=0
+          if [ "$(printf '%s' "$out" | tail -1)" = "OK" ]; then
+            ok=1
+          fi
+
+          # artisan.php in mỗi lệnh thành một khối "--- <lệnh> (exit N)". Cắt riêng
+          # khối migrate ra trang tổng kết của run: nó hiện sẵn khi mở run, không phải
+          # bung step nào cả — trả lời thẳng câu "migration nào vừa chạy?".
+          block="$(printf '%s\n' "$out" | awk '
+            /^--- migrate \(/ { inside = 1; print; next }
+            inside && /^--- /  { exit }
+            inside             { print }
+          ')"
+
+          {
+            echo "## Backend — migrate"
+            echo
+            echo '```'
+            printf '%s\n' "${block:-(không thấy khối migrate trong output — HTTP $code)}"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$ok" -ne 1 ]; then
+            echo "::error::migrate/cache thất bại (HTTP $code) — xem output ngay trên"
+            exit 1
+          fi
 
       # Chạy cả khi bước trên hỏng — đó đúng là lúc dễ còn sót script nhất. Token chỉ
       # dùng được một lần và không có ở đâu khác, nhưng một file nhận lệnh qua HTTP nằm

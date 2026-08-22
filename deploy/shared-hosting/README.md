@@ -278,6 +278,12 @@ giữ file cũ trong opcache, hỏng thất thường và rất khó chẩn đo�
 Cả hai script tự xoá mình ngay sau khi chạy, nhận một token sinh ngẫu nhiên cho
 đúng lần deploy đó, và smoke test kiểm tra lại rằng chúng đã biến mất.
 
+**Xem migration nào vừa chạy**: mở run trong tab *Actions* — khối *Backend —
+migrate* nằm ngay trên trang tổng kết, không phải bung bước nào. Đầy đủ output
+của mọi lệnh artisan thì ở bước **migrate + hâm cache** trong job *Backend*; nó
+là một bước riêng đúng vì lý do này, gộp chung vào *Upload* thì output nằm lẫn
+giữa vài trăm dòng lftp và không ai tìm ra.
+
 **Những gì workflow KHÔNG làm hộ**, vì chúng chỉ đúng một lần:
 
 - tạo subdomain `api.taida.vn` và trỏ document root vào `<DEPLOY_API_PATH>/public`;
