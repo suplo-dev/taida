@@ -6,6 +6,6 @@ definePageMeta({ layout: 'admin', middleware: 'auth' })
   <AdminTreeContentList
     endpoint="services"
     title="Dịch vụ"
-    subtitle="Bốn trụ cột và các dịch vụ con bên dưới."
+    subtitle="Các trụ cột chính và những dịch vụ con bên dưới."
   />
 </template>

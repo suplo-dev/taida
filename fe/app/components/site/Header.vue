@@ -224,7 +224,9 @@ onClickOutside(header, () => (openPanel.value = null))
             </NuxtLink>
           </div>
 
-          <div class="grid grid-cols-4 gap-x-8 gap-y-6">
+          <!-- Cùng lý do như lưới trụ cột ở trang chủ: số cột chạy theo số mục
+               lấy từ API, vì cả hai catalogue đều thêm bớt được trong CMS. -->
+          <div class="grid grid-cols-[repeat(auto-fit,minmax(min(100%,15rem),1fr))] gap-x-8 gap-y-6">
             <div v-for="item in (openPanel === 'services' ? catalogues?.services : catalogues?.industries) ?? []" :key="item.id">
               <NuxtLink
                 :to="localePath({ name: openPanel === 'services' ? 'dich-vu-slug' : 'nganh-nghe-slug', params: { slug: item.slug } })"

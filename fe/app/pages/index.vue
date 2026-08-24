@@ -117,7 +117,10 @@ useSeo(() => ({
         :to="localePath('dich-vu')"
       />
 
-      <div class="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+      <!-- Số cột theo số trụ cột thực có, không cố định ở 4: `auto-fit` thu gọn
+           các track trống nên bốn trụ cột vẫn trải đủ chiều ngang như trước,
+           còn trụ cột thứ năm được thêm trong CMS thì vào cùng một hàng. -->
+      <div class="grid gap-5 grid-cols-[repeat(auto-fit,minmax(min(100%,16rem),1fr))]">
         <SiteContentCard
           v-for="service in home?.services ?? []"
           :key="service.id"

@@ -57,7 +57,7 @@ class Service extends Model implements RendersPublicOutput
         return $this->belongsToMany(Industry::class)->withPivot('sort_order');
     }
 
-    /** Top-level services only — the four pillars shown on the homepage. */
+    /** Top-level services only — the pillars shown on the homepage. */
     public function scopeRoots(Builder $query): void
     {
         $query->whereNull('parent_id');
