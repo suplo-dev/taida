@@ -195,7 +195,7 @@ function field(locale: Locale, name: string): string {
 
         <div class="space-y-4 rounded-lg border border-neutral-200 bg-white p-5">
           <AdminFormField label="Ảnh bìa">
-            <AdminMediaPicker v-model="form.cover_media_id" :preview="cover" />
+            <AdminMediaPicker v-model="form.cover_media_id" :preview="cover" :min-width="1600" />
           </AdminFormField>
 
           <AdminFormField label="Thuộc mục cha" :error="error('parent_id')">

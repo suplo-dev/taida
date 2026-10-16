@@ -241,7 +241,7 @@ async function submit() {
         <h2 class="text-sm font-semibold text-neutral-700">Ảnh nền trang chủ</h2>
 
         <AdminFormField label="Ảnh nền">
-          <AdminMediaPicker v-model="form.heroImage" :preview="heroImagePreview" />
+          <AdminMediaPicker v-model="form.heroImage" :preview="heroImagePreview" :min-width="1920" />
 
           <template #hint>
             <p>Nằm phía sau khẩu hiệu ở đầu trang chủ. Để trống thì dùng nền màu như hiện nay.</p>

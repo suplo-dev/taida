@@ -121,7 +121,7 @@ function field(locale: Locale, name: string): string {
           </AdminFormField>
 
           <AdminFormField label="Ảnh bìa">
-            <AdminMediaPicker v-model="form.cover_media_id" :preview="cover" />
+            <AdminMediaPicker v-model="form.cover_media_id" :preview="cover" :min-width="1600" />
           </AdminFormField>
         </div>
       </aside>

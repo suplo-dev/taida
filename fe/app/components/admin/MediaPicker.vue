@@ -3,7 +3,15 @@ import type { Envelope, Media, Paginated } from '~/types/api'
 
 const model = defineModel<number | null>({ default: null })
 
-const props = defineProps<{ preview?: Media | null }>()
+const props = defineProps<{
+  preview?: Media | null
+  /**
+   * Bề ngang tối thiểu để ảnh không vỡ ở chỗ nó được dùng. Ảnh bìa trải hết
+   * chiều ngang màn hình, nên một tấm 568 px bị phóng gần bốn lần trên màn
+   * 1920 px — cảnh báo ngay lúc chọn để người nhập biết mà thay ảnh lớn hơn.
+   */
+  minWidth?: number
+}>()
 
 const api = useApi()
 const toast = useToast()
@@ -30,6 +38,11 @@ const selected = ref<Media | null>(props.preview ?? null)
 const fileInput = useTemplateRef<HTMLInputElement>('fileInput')
 
 watch(() => props.preview, value => (selected.value = value ?? null))
+
+/** Không biết kích thước (ảnh cũ chưa đo, SVG) thì không cảnh báo — không có gì để so. */
+const tooSmall = computed(() =>
+  !!props.minWidth && !!selected.value?.width && selected.value.width < props.minWidth,
+)
 
 async function load() {
   loading.value = true
@@ -118,8 +131,18 @@ async function upload(event: Event) {
         <UButton v-if="selected" size="xs" variant="ghost" color="neutral" icon="i-lucide-x" @click="choose(null)">
           Bỏ ảnh
         </UButton>
+        <span v-if="selected?.width && selected.height" class="text-xs text-neutral-500">
+          {{ selected.width }} × {{ selected.height }} px
+        </span>
       </div>
     </div>
+
+    <p v-if="tooSmall" class="mt-2 flex items-start gap-1.5 text-xs text-amber-700">
+      <UIcon name="i-lucide-triangle-alert" class="mt-px size-4 shrink-0" />
+      <span>
+        Ảnh chỉ rộng {{ selected!.width }} px, có thể bị vỡ khi hiển thị. Nên dùng ảnh ngang, rộng từ {{ minWidth }} px trở lên.
+      </span>
+    </p>
 
     <UModal v-model:open="open" title="Thư viện ảnh">
       <template #body>
@@ -140,11 +163,18 @@ async function upload(event: Event) {
             v-for="item in items"
             :key="item.id"
             type="button"
-            class="aspect-square overflow-hidden rounded border-2 transition"
+            class="relative aspect-square overflow-hidden rounded border-2 transition"
             :class="selected?.id === item.id ? 'border-primary-500' : 'border-transparent hover:border-neutral-300'"
             @click="choose(item)"
           >
             <img :src="item.thumbUrl ?? item.url" :alt="item.alt ?? ''" class="size-full object-cover">
+            <span
+              v-if="item.width"
+              class="absolute inset-x-0 bottom-0 bg-black/55 px-1 py-0.5 text-[10px] text-white"
+              :class="minWidth && item.width < minWidth ? 'text-amber-300' : ''"
+            >
+              {{ item.width }} × {{ item.height }}
+            </span>
           </button>
         </div>
 
