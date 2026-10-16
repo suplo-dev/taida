@@ -1,6 +1,5 @@
 <script setup lang="ts">
 const { t } = useI18n()
-const localePath = useLocalePath()
 const { data: chrome } = await useSiteData()
 
 const year = new Date().getFullYear()
@@ -57,12 +56,20 @@ const socialLinks = computed(() => Object.entries(chrome.value?.settings.social 
           </ul>
         </div>
 
-        <nav>
-          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-white">{{ t('nav.services') }}</h2>
+        <!-- Cùng menu với header, để bỏ hay thêm mục trong CMS là chân trang theo luôn. -->
+        <nav v-if="chrome?.header.length">
+          <h2 class="mb-3 text-sm font-semibold uppercase tracking-wide text-white">{{ t('nav.menu') }}</h2>
           <ul class="space-y-2 text-sm">
-            <li><NuxtLink :to="localePath('dich-vu')" class="hover:text-white">{{ t('nav.services') }}</NuxtLink></li>
-            <li><NuxtLink :to="localePath('nganh-nghe')" class="hover:text-white">{{ t('nav.industries') }}</NuxtLink></li>
-            <li><NuxtLink :to="localePath('tin-tuc')" class="hover:text-white">{{ t('nav.insights') }}</NuxtLink></li>
+            <li v-for="link in chrome.header" :key="link.id">
+              <NuxtLink
+                :to="link.href"
+                :target="link.opensInNewTab ? '_blank' : undefined"
+                :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
+                class="hover:text-white"
+              >
+                {{ link.label }}
+              </NuxtLink>
+            </li>
           </ul>
         </nav>
 

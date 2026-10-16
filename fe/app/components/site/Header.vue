@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { Envelope, Industry, Service } from '~/types/api'
+import type { Envelope, Industry, MenuLink, Service } from '~/types/api'
 
 const { t, locale } = useI18n()
 const localePath = useLocalePath()
@@ -35,8 +35,23 @@ const editions = [
   { locale: 'en' as const, lang: 'English' },
 ]
 
+type Panel = 'services' | 'industries'
+
+/**
+ * Mục menu nào mở mega panel: mục trỏ tới trang danh sách dịch vụ hoặc ngành
+ * nghề. Đọc từ đích của chính mục đó chứ không theo vị trí, nên xoá hay đổi
+ * thứ tự trong CMS là header theo đúng như vậy.
+ */
+function panelOf(link: MenuLink): Panel | null {
+  const target = link.target
+
+  return target?.type === 'route' && (target.route === 'services' || target.route === 'industries')
+    ? target.route
+    : null
+}
+
 /** Which mega panel is open on desktop; null when none. */
-const openPanel = ref<'services' | 'industries' | null>(null)
+const openPanel = ref<Panel | null>(null)
 const mobileOpen = ref(false)
 
 /**
@@ -96,44 +111,38 @@ onClickOutside(header, () => (openPanel.value = null))
         and the contact controls read as one group.
       -->
       <nav class="ml-auto hidden items-stretch gap-1 md:flex">
-        <button
-          type="button"
-          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-1.5 text-base font-semibold transition lg:px-3.5 lg:text-lg xl:px-5"
-          :class="openPanel === 'industries' ? 'border-accent-400 text-white' : 'border-transparent text-brand-50 hover:text-white'"
-          @click="openPanel = openPanel === 'industries' ? null : 'industries'"
-        >
-          {{ t('nav.industries') }}
-          <UIcon name="i-lucide-chevron-down" class="size-3.5" />
-        </button>
+        <template v-for="link in chrome?.header ?? []" :key="link.id">
+          <button
+            v-if="panelOf(link)"
+            type="button"
+            class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-1.5 text-base font-semibold transition lg:px-3.5 lg:text-lg xl:px-5"
+            :class="openPanel === panelOf(link) ? 'border-accent-400 text-white' : 'border-transparent text-brand-50 hover:text-white'"
+            @click="openPanel = openPanel === panelOf(link) ? null : panelOf(link)"
+          >
+            {{ link.label }}
+            <UIcon name="i-lucide-chevron-down" class="size-3.5" />
+          </button>
 
-        <button
-          type="button"
-          class="flex items-center gap-1.5 whitespace-nowrap border-b-2 px-1.5 text-base font-semibold transition lg:px-3.5 lg:text-lg xl:px-5"
-          :class="openPanel === 'services' ? 'border-accent-400 text-white' : 'border-transparent text-brand-50 hover:text-white'"
-          @click="openPanel = openPanel === 'services' ? null : 'services'"
-        >
-          {{ t('nav.services') }}
-          <UIcon name="i-lucide-chevron-down" class="size-3.5" />
-        </button>
-
-        <!--
-          `border-accent-400!` rather than plain `border-accent-400`: the
-          resting state needs `border-transparent` so the item always reserves
-          the underline's 2 px, and the two utilities have equal specificity —
-          whichever Tailwind emits last wins, regardless of which one the
-          router adds. The important modifier is what makes the active state
-          actually paint. The mega-menu buttons above sidestep this by binding
-          one class list or the other, never both.
-        -->
-        <NuxtLink
-          v-for="link in chrome?.header.slice(2) ?? []"
-          :key="link.id"
-          :to="link.href"
-          class="flex items-center whitespace-nowrap border-b-2 border-transparent px-1.5 text-base font-semibold text-brand-50 transition hover:text-white lg:px-3.5 lg:text-lg xl:px-5"
-          active-class="border-accent-400! text-white"
-        >
-          {{ link.label }}
-        </NuxtLink>
+          <!--
+            `border-accent-400!` rather than plain `border-accent-400`: the
+            resting state needs `border-transparent` so the item always reserves
+            the underline's 2 px, and the two utilities have equal specificity —
+            whichever Tailwind emits last wins, regardless of which one the
+            router adds. The important modifier is what makes the active state
+            actually paint. The mega-menu buttons above sidestep this by binding
+            one class list or the other, never both.
+          -->
+          <NuxtLink
+            v-else
+            :to="link.href"
+            :target="link.opensInNewTab ? '_blank' : undefined"
+            :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
+            class="flex items-center whitespace-nowrap border-b-2 border-transparent px-1.5 text-base font-semibold text-brand-50 transition hover:text-white lg:px-3.5 lg:text-lg xl:px-5"
+            active-class="border-accent-400! text-white"
+          >
+            {{ link.label }}
+          </NuxtLink>
+        </template>
       </nav>
 
       <!--
@@ -253,32 +262,31 @@ onClickOutside(header, () => (openPanel.value = null))
     <!-- Mobile accordion -->
     <div v-if="mobileOpen" class="border-t border-white/15 bg-brand-600 md:hidden">
       <nav class="space-y-1 px-4 py-4">
-        <details
-v-for="group in ([
-          { key: 'industries', label: t('nav.industries'), to: 'nganh-nghe', items: catalogues?.industries ?? [] },
-          { key: 'services', label: t('nav.services'), to: 'dich-vu', items: catalogues?.services ?? [] },
-        ])" :key="group.key" class="border-b border-white/15 pb-2">
-          <summary class="cursor-pointer py-2.5 text-base font-semibold text-white">{{ group.label }}</summary>
-          <ul class="space-y-1 pb-2 pl-3">
-            <li v-for="item in group.items" :key="item.id">
-              <NuxtLink
-                :to="localePath({ name: group.to === 'dich-vu' ? 'dich-vu-slug' : 'nganh-nghe-slug', params: { slug: item.slug } })"
-                class="block py-2 text-base text-brand-50"
-              >
-                {{ item.name }}
-              </NuxtLink>
-            </li>
-          </ul>
-        </details>
+        <template v-for="link in chrome?.header ?? []" :key="link.id">
+          <details v-if="panelOf(link)" class="border-b border-white/15 pb-2">
+            <summary class="cursor-pointer py-2.5 text-base font-semibold text-white">{{ link.label }}</summary>
+            <ul class="space-y-1 pb-2 pl-3">
+              <li v-for="item in catalogues?.[panelOf(link)!] ?? []" :key="item.id">
+                <NuxtLink
+                  :to="localePath({ name: panelOf(link) === 'services' ? 'dich-vu-slug' : 'nganh-nghe-slug', params: { slug: item.slug } })"
+                  class="block py-2 text-base text-brand-50"
+                >
+                  {{ item.name }}
+                </NuxtLink>
+              </li>
+            </ul>
+          </details>
 
-        <NuxtLink
-          v-for="link in chrome?.header.slice(2) ?? []"
-          :key="link.id"
-          :to="link.href"
-          class="block py-3 text-base font-semibold text-brand-50"
-        >
-          {{ link.label }}
-        </NuxtLink>
+          <NuxtLink
+            v-else
+            :to="link.href"
+            :target="link.opensInNewTab ? '_blank' : undefined"
+            :rel="link.opensInNewTab ? 'noopener noreferrer' : undefined"
+            class="block py-3 text-base font-semibold text-brand-50"
+          >
+            {{ link.label }}
+          </NuxtLink>
+        </template>
 
         <!--
           The edition switcher, which the utility bar carries from md up. It
